@@ -1,0 +1,56 @@
+{
+    "name": "multicorn2",
+    "abstract": "Multicorn Python bindings for Postgres 10+ Foreign Data Wrapper",
+    "description": "The Multicorn2 Foreign Data Wrapper allows you to write foreign data wrappers in python.",
+    "version": "__VERSION__",
+    "maintainer": "Denis Lussier <denis@lussier.io>",
+    "license": {
+        "PostgreSQL": "http://www.postgresql.org/about/licence"
+    },
+    "resources": {
+        "repository": {
+            "url":  "git://github.com/pgsql-io/multicorn2.git",
+            "type": "git"
+        },
+        "homepage": "http://multicorn2.org",
+        "bugtracker": {
+            "web": "https://github.com/pgsql-io/multicorn2",
+            "mailto": "denis@lussier.io"
+        }
+    },
+    "provides": {
+        "multicorn": {
+            "abstract": "Multicorn Python bindings for Postgres 10+ Foreign Data Wrapper",
+            "file": "sql/multicorn2.sql",
+            "docfile": "doc/multicorn2.md",
+            "version": "__VERSION__"
+        }
+    },
+    "prereqs": {
+        "runtime": {
+            "requires": {
+                "PostgreSQL": "10.0",
+                "Python": "3.6.0"
+            }
+        }
+    },
+
+    "release_status": "stable",
+    "generated_by": "Lussier",
+    "meta-spec": {
+        "version": "1.0.0",
+        "url": "http://pgxn.org/meta/spec.txt"
+    },
+    "tags": [
+        "multicorn",
+        "python",
+        "csv",
+        "ldap",
+        "imap",
+        "filesystem",
+        "SQL MED",
+        "foreign data wrapper",
+        "fdw",
+        "external data"
+    ]
+}
