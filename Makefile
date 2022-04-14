@@ -1,6 +1,6 @@
 srcdir       = .
 MODULE_big   = multicorn2
-OBJS         =  src/errors.o src/python.o src/query.o src/multicorn.o
+OBJS         =  src/errors.o src/python.o src/query.o src/multicorn2.o
 
 
 DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
@@ -10,7 +10,7 @@ DOCS         = $(wildcard $(srcdir)/doc/*.md)
 EXTENSION    = multicorn2
 EXTVERSION   = $(shell grep default_version $(srcdir)/$(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
 
-all: preflight-check sql/$(EXTENSION)--$(EXTVERSION).sql
+all: sql/$(EXTENSION)--$(EXTVERSION).sql
 
 directories.stamp:
 	[ -d sql ] || mkdir sql
@@ -97,39 +97,35 @@ endif
 
 PYTHON_TEST_VERSION ?= $(python_version)
 PG_TEST_VERSION ?= $(MAJORVERSION)
-SUPPORTS_WRITE=$(shell expr ${VERSION_NUM} \>= 90300)
-SUPPORTS_IMPORT=$(shell expr ${VERSION_NUM} \>= 90500)
 UNSUPPORTS_SQLALCHEMY=$(shell python -c "import sqlalchemy;import psycopg2"  1> /dev/null 2>&1; echo $$?)
 
-TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_column_options_test.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_error_test.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_logger_test.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_planner_test.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_regression_test.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_sequence_test.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_date.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_dict.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_list.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_sort.sql
+TESTS        = test-3/sql/multicorn_cache_invalidation.sql \
+  test-3/sql/multicorn_column_options_test.sql \
+  test-3/sql/multicorn_error_test.sql \
+  test-3/sql/multicorn_logger_test.sql \
+  test-3/sql/multicorn_planner_test.sql \
+  test-3/sql/multicorn_regression_test.sql \
+  test-3/sql/multicorn_sequence_test.sql \
+  test-3/sql/multicorn_test_date.sql \
+  test-3/sql/multicorn_test_dict.sql \
+  test-3/sql/multicorn_test_list.sql \
+  test-3/sql/multicorn_test_sort.sql
 
 ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
-  TESTS += test-$(PYTHON_TEST_VERSION)/sql/multicorn_alchemy_test.sql
+  TESTS += test-3/sql/multicorn_alchemy_test.sql
 endif
-ifeq (${SUPPORTS_WRITE}, 1)
+
   TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_filesystem.sql \
 	test-$(PYTHON_TEST_VERSION)/sql/write_savepoints.sql \
 	test-$(PYTHON_TEST_VERSION)/sql/write_test.sql
   ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
 	TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_sqlalchemy.sql
   endif
-endif
-ifeq (${SUPPORTS_IMPORT}, 1)
+
   TESTS += test-$(PYTHON_TEST_VERSION)/sql/import_test.sql
   ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
 	TESTS += test-$(PYTHON_TEST_VERSION)/sql/import_sqlalchemy.sql
   endif
-endif
 
 REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION)

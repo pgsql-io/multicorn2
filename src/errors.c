@@ -1,18 +1,15 @@
 /*-------------------------------------------------------------------------
  *
- * The Multicorn Foreign Data Wrapper allows you to fetch foreign data in
+ * The Multicorn2 Foreign Data Wrapper allows you to fetch foreign data in
  * Python in your PostgreSQL server.
  *
  * This module contains error handling functions.
  *
  * This software is released under the postgresql licence
  *
- * author: Kozea
- *
- *
  *-------------------------------------------------------------------------
  */
-#include "multicorn.h"
+#include "multicorn2.h"
 #include "bytesobject.h"
 #include "access/xact.h"
 

@@ -1,20 +1,17 @@
 /*-------------------------------------------------------------------------
  *
- * The Multicorn Foreign Data Wrapper allows you to fetch foreign data in
+ * The Multicorn2 Foreign Data Wrapper allows you to fetch foreign data in
  * Python in your PostgreSQL.
  *
  * This module contains helpers meant to be called from python code.
  *
  * This software is released under the postgresql licence
  *
- * author: Kozea
- *
- *
  *-------------------------------------------------------------------------
  */
 #include <Python.h>
 #include "postgres.h"
-#include "multicorn.h"
+#include "multicorn2.h"
 #include "miscadmin.h"
 
 
@@ -23,12 +20,7 @@ struct module_state
 	PyObject   *error;
 };
 
-#if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state)
-static struct module_state _state;
-#endif
 
 static PyObject *
 log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -138,8 +130,6 @@ static PyMethodDef UtilsMethods[] = {
 	{NULL, NULL, 0, NULL}
 };
 
-#if PY_MAJOR_VERSION >= 3
-
 static struct PyModuleDef moduledef = {
 	PyModuleDef_HEAD_INIT,
 	"multicorn._utils",
@@ -156,25 +146,13 @@ static struct PyModuleDef moduledef = {
 
 PyObject *
 PyInit__utils(void)
-#else
-#define INITERROR return
-
-void
-init_utils(void)
-#endif
 {
-#if PY_MAJOR_VERSION >= 3
 	PyObject   *module = PyModule_Create(&moduledef);
-#else
-	PyObject   *module = Py_InitModule("multicorn._utils", UtilsMethods);
-#endif
 	struct module_state *st;
 
 	if (module == NULL)
 		INITERROR;
 	st = GETSTATE(module);
 
-#if PY_MAJOR_VERSION >= 3
 	return module;
-#endif
 }

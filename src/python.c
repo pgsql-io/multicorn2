@@ -1,7 +1,7 @@
 #include <Python.h>
 #include "datetime.h"
 #include "postgres.h"
-#include "multicorn.h"
+#include "multicorn2.h"
 #include "catalog/pg_user_mapping.h"
 #include "access/reloptions.h"
 #include "miscadmin.h"
@@ -130,7 +130,6 @@ PyUnicode_AsPgString(PyObject *p_unicode)
 	return message;
 }
 
-#if PY_MAJOR_VERSION >= 3
 /*
  * Convert a C string in the PostgreSQL server encoding to a Python
  * unicode object.	Reference ownership is passed to the caller.
@@ -194,7 +193,6 @@ PyString_AsStringAndSize(PyObject *obj, char **buffer, Py_ssize_t *length)
 	}
 	return PyBytes_AsStringAndSize(obj, buffer, length);
 }
-#endif   /* PY_MAJOR_VERSION >= 3 */
 
 /*
  * Utility function responsible for importing, and returning, a class by name
@@ -1400,11 +1398,7 @@ datumNumberToPython(Datum datum, ConversionInfo * cinfo)
 	char	   *tempvalue = (char *) DirectFunctionCall1(numeric_out,
 														 numvalue);
 	PyObject   *buffer = PyString_FromString(tempvalue),
-#if PY_MAJOR_VERSION >= 3
 			   *value = PyFloat_FromString(buffer);
-#else
-			   *value = PyFloat_FromString(buffer, NULL);
-#endif
 	Py_DECREF(buffer);
 	return value;
 }
@@ -1498,11 +1492,7 @@ datumByteaToPython(Datum datum, ConversionInfo * cinfo)
 	char	   *str = txt == NULL ? "?" : VARDATA(txt);
 	size_t		size = VARSIZE(txt) - VARHDRSZ;
 
-#if PY_MAJOR_VERSION >= 3
 	return PyBytes_FromStringAndSize(str, size);
-#else
-	return PyString_FromStringAndSize(str, size);
-#endif
 }
 
 

@@ -1,4 +1,4 @@
-#include "multicorn.h"
+#include "multicorn2.h"
 #if PG_VERSION_NUM < 120000
 #include "optimizer/var.h"
 #else

@@ -1,12 +1,11 @@
 /*
- * The Multicorn Foreign Data Wrapper allows you to fetch foreign data in
+ * The Multicorn2 Foreign Data Wrapper allows you to fetch foreign data in
  * Python in your PostgreSQL server
  *
  * This software is released under the postgresql licence
  *
- * author: Kozea
  */
-#include "multicorn.h"
+#include "multicorn2.h"
 #include "optimizer/paths.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
@@ -35,12 +34,12 @@
 PG_MODULE_MAGIC;
 
 
-extern Datum multicorn_handler(PG_FUNCTION_ARGS);
-extern Datum multicorn_validator(PG_FUNCTION_ARGS);
+extern Datum multicorn2_handler(PG_FUNCTION_ARGS);
+extern Datum multicorn2_validator(PG_FUNCTION_ARGS);
 
 
-PG_FUNCTION_INFO_V1(multicorn_handler);
-PG_FUNCTION_INFO_V1(multicorn_validator);
+PG_FUNCTION_INFO_V1(multicorn2_handler);
+PG_FUNCTION_INFO_V1(multicorn2_validator);
 
 
 void		_PG_init(void);
@@ -121,7 +120,6 @@ _PG_init()
 	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
 	bool need_import_plpy = false;
 
-#if PY_MAJOR_VERSION >= 3
 	/* Try to load plpython3 with its own module */
 	PG_TRY();
 	{
@@ -134,7 +132,6 @@ _PG_init()
 		need_import_plpy = false;
 	}
 	PG_END_TRY();
-#endif
 	Py_Initialize();
 	if (need_import_plpy)
 		PyImport_ImportModule("plpy");
@@ -160,7 +157,7 @@ _PG_fini()
 
 
 Datum
-multicorn_handler(PG_FUNCTION_ARGS)
+multicorn2_handler(PG_FUNCTION_ARGS)
 {
 	FdwRoutine *fdw_routine = makeNode(FdwRoutine);
 
@@ -191,7 +188,7 @@ multicorn_handler(PG_FUNCTION_ARGS)
 }
 
 Datum
-multicorn_validator(PG_FUNCTION_ARGS)
+multicorn2_validator(PG_FUNCTION_ARGS)
 {
 	List	   *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
 	Oid			catalog = PG_GETARG_OID(1);
