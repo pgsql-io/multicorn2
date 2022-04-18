@@ -1,7 +1,7 @@
 #include <Python.h>
 #include "datetime.h"
 #include "postgres.h"
-#include "multicorn2.h"
+#include "multicorn.h"
 #include "catalog/pg_user_mapping.h"
 #include "access/reloptions.h"
 #include "miscadmin.h"

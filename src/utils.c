@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * The Multicorn2 Foreign Data Wrapper allows you to fetch foreign data in
+ * The Multicorn Foreign Data Wrapper allows you to fetch foreign data in
  * Python in your PostgreSQL.
  *
  * This module contains helpers meant to be called from python code.
@@ -11,7 +11,7 @@
  */
 #include <Python.h>
 #include "postgres.h"
-#include "multicorn2.h"
+#include "multicorn.h"
 #include "miscadmin.h"
 
 

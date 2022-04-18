@@ -1,11 +1,11 @@
 /*
- * The Multicorn2 Foreign Data Wrapper allows you to fetch foreign data in
+ * The Multicorn Foreign Data Wrapper allows you to fetch foreign data in
  * Python in your PostgreSQL server
  *
  * This software is released under the postgresql licence
  *
  */
-#include "multicorn2.h"
+#include "multicorn.h"
 #include "optimizer/paths.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
@@ -34,12 +34,12 @@
 PG_MODULE_MAGIC;
 
 
-extern Datum multicorn2_handler(PG_FUNCTION_ARGS);
-extern Datum multicorn2_validator(PG_FUNCTION_ARGS);
+extern Datum multicorn_handler(PG_FUNCTION_ARGS);
+extern Datum multicorn_validator(PG_FUNCTION_ARGS);
 
 
-PG_FUNCTION_INFO_V1(multicorn2_handler);
-PG_FUNCTION_INFO_V1(multicorn2_validator);
+PG_FUNCTION_INFO_V1(multicorn_handler);
+PG_FUNCTION_INFO_V1(multicorn_validator);
 
 
 void		_PG_init(void);
@@ -157,7 +157,7 @@ _PG_fini()
 
 
 Datum
-multicorn2_handler(PG_FUNCTION_ARGS)
+multicorn_handler(PG_FUNCTION_ARGS)
 {
 	FdwRoutine *fdw_routine = makeNode(FdwRoutine);
 
@@ -188,7 +188,7 @@ multicorn2_handler(PG_FUNCTION_ARGS)
 }
 
 Datum
-multicorn2_validator(PG_FUNCTION_ARGS)
+multicorn_validator(PG_FUNCTION_ARGS)
 {
 	List	   *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
 	Oid			catalog = PG_GETARG_OID(1);

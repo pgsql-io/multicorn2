@@ -1,6 +1,6 @@
 srcdir       = .
 MODULE_big   = multicorn
-OBJS         =  src/errors.o src/python.o src/query.o src/multicorn2.o
+OBJS         =  src/errors.o src/python.o src/query.o src/multicorn.o
 
 
 DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))

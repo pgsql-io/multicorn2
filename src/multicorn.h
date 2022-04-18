@@ -20,8 +20,8 @@
 #include "utils/builtins.h"
 #include "utils/syscache.h"
 
-#ifndef PG_MULTICORN2_H
-#define PG_MULTICORN2_H
+#ifndef PG_MULTICORN_H
+#define PG_MULTICORN_H
 
 /* Data structures */
 
@@ -218,7 +218,7 @@ PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
 List	*serializeDeparsedSortGroup(List *pathkeys);
 List	*deserializeDeparsedSortGroup(List *items);
 
-#endif   /* PG_MULTICORN2_H */
+#endif   /* PG_MULTICORN_H */
 
 char	   *PyUnicode_AsPgString(PyObject *p_unicode);
 
