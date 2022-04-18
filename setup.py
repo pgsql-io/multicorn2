@@ -21,15 +21,12 @@ multicorn_utils_module = Extension('multicorn._utils',
 requires=[]
 
 if sys.version_info[0] == 2:
-    if sys.version_info[1] == 6:
-        requires.append("ordereddict")
-    elif sys.version_info[1] < 6:
-        sys.exit("Sorry, you need at least python 2.6 for Multicorn")
+    sys.exit("Sorry, you need at least python 3.6 for Multicorn2")
 
 setup(
  name='multicorn',
  version='__VERSION__',
- author='Kozea',
+ author='Lussier',
  license='Postgresql',
  package_dir={'': 'python'},
  packages=['multicorn', 'multicorn.fsfdw'],

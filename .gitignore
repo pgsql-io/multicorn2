@@ -1,1 +1,5 @@
-setup--2.0*
+setup--2.*
+*.o
+*.bc
+directories.stamp
+*.so

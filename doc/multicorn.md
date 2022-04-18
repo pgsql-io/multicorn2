@@ -4,7 +4,7 @@ Multicorn2
 Synopsis
 --------
 
-Multicorn2 is a PostgreSQL 10+ extension allowing to write Foreign Data Wrappers
+Multicorn2 is a PostgreSQL 10++ extension allowing to write Foreign Data Wrappers
 in python.
 It is bundled with some foreign data wrappers.
 
@@ -15,7 +15,7 @@ Usage
 Create the extension (as a super user, on your target database):
 
 
-    CREATE EXTENSION multicorn2;
+    CREATE EXTENSION multicorn;
 
 
 
@@ -24,7 +24,7 @@ to use:
 
 
 
-    CREATE SERVER my_server_name FOREIGN DATA WRAPPER multicorn2
+    CREATE SERVER my_server_name FOREIGN DATA WRAPPER multicorn
     options (
         wrapper 'python.class.Name'
     )
@@ -37,9 +37,9 @@ Ex, for the Imap foreign data wrapper:
 
 
 
-    CREATE SERVER multicorn2_imap FOREIGN DATA WRAPPER multicorn2
+    CREATE SERVER multicorn_imap FOREIGN DATA WRAPPER multicorn
         options (
-        wrapper 'multicorn2.imapfdw.ImapFdw'
+        wrapper 'multicorn.imapfdw.ImapFdw'
     );
 
 
@@ -57,7 +57,7 @@ Ex:
         "Subject" character varying,
         "payload" character varying,
         "flags" character varying[],
-        "To" character varying) server multicorn2_imap options (
+        "To" character varying) server multicorn_imap options (
             host 'imap.gmail.com',
             port '465', 
             payload_column 'payload', 

@@ -1,5 +1,5 @@
 srcdir       = .
-MODULE_big   = multicorn2
+MODULE_big   = multicorn
 OBJS         =  src/errors.o src/python.o src/query.o src/multicorn2.o
 
 
@@ -7,7 +7,7 @@ DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 
 DOCS         = $(wildcard $(srcdir)/doc/*.md)
 
-EXTENSION    = multicorn2
+EXTENSION    = multicorn
 EXTVERSION   = $(shell grep default_version $(srcdir)/$(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
 
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
