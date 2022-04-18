@@ -2,7 +2,7 @@
 Usage
 *****
 
-The multicorn foreign data wrapper is not different from other foreign data
+The multicorn2 foreign data wrapper is not different from other foreign data
 wrappers.
 
 To use it, you have to:
