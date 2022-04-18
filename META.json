@@ -1,6 +1,6 @@
 {
-    "name": "multicorn2",
-    "abstract": "Multicorn Python bindings for Postgres 10+ Foreign Data Wrapper",
+    "name": "multicorn",
+    "abstract": "Multicorn2 Python bindings for Postgres 10+ Foreign Data Wrapper",
     "description": "The Multicorn2 Foreign Data Wrapper allows you to write foreign data wrappers in python.",
     "version": "__VERSION__",
     "maintainer": "Denis Lussier <denis@lussier.io>",
@@ -21,8 +21,8 @@
     "provides": {
         "multicorn": {
             "abstract": "Multicorn Python bindings for Postgres 10+ Foreign Data Wrapper",
-            "file": "sql/multicorn2.sql",
-            "docfile": "doc/multicorn2.md",
+            "file": "sql/multicorn.sql",
+            "docfile": "doc/multicorn.md",
             "version": "__VERSION__"
         }
     },
