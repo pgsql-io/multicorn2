@@ -307,6 +307,7 @@ extractRestrictions(
 					Expr *node,
 					List **quals)
 {
+	elog(DEBUG3, "entering extractRestrictions()");
 	switch (nodeTag(node))
 	{
 		case T_OpExpr:
@@ -358,6 +359,7 @@ extractClauseFromOpExpr(
 	Var		   *left;
 	Expr	   *right;
 
+	elog(DEBUG3, "entering extractClauseFromOpExpr()");
 	/* Use a "canonical" version of the op expression, to ensure that the */
 	/* left operand is a Var on our relation. */
 	op = canonicalOpExpr(op, base_relids);
@@ -394,6 +396,7 @@ extractClauseFromScalarArrayOpExpr(
 	Var		   *left;
 	Expr	   *right;
 
+	elog(DEBUG3, "entering extractClauseFromScalarArrayOpExpr()");
 	op = canonicalScalarArrayOpExpr(op, base_relids);
 	if (op)
 	{
@@ -425,6 +428,7 @@ extractClauseFromNullTest(Relids base_relids,
 						  NullTest *node,
 						  List **quals)
 {
+	elog(DEBUG3, "entering extractClauseFromNullTest()");
 	if (IsA(node->arg, Var))
 	{
 		Var		   *var = (Var *) node->arg;
@@ -506,6 +510,7 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 	qual->opname = opname;
 	qual->isArray = isarray;
 	qual->useOr = useOr;
+	elog(DEBUG3, "makeQual() opname '%s': right_type '%d'", opname, qual->right_type);
 	return qual;
 }
 

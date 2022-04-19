@@ -1,4 +1,4 @@
 comment = 'Multicorn2 Python bindings for Postgres 10++ Foreign Data Wrapper'
-default_version = '2.1'
+default_version = '2.2'
 module_pathname = '$libdir/multicorn'
 relocatable = true

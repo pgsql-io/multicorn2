@@ -3,3 +3,6 @@ setup--2.*
 *.bc
 directories.stamp
 *.so
+build/
+dist/
+python/multicorn.egg-info/
