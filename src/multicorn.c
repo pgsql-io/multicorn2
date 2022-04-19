@@ -481,15 +481,17 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
 	execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
 	execstate->qual_list = NULL;
-//#if PG_VERSION_NUM < 140000
 	foreach(lc, fscan->fdw_exprs)
 	{
 		elog(DEBUG3, "looping in beginForeignScan()");
-		extractRestrictions(NULL, bms_make_singleton(fscan->scan.scanrelid),
+		extractRestrictions(
+#if PG_VERSION_NUM >= 140000
+NULL, 
+#endif
+bms_make_singleton(fscan->scan.scanrelid),
 							((Expr *) lfirst(lc)),
 							&execstate->qual_list);
 	}
-//#endif
 	initConversioninfo(execstate->cinfos, TupleDescGetAttInMetadata(tupdesc));
 	node->fdw_state = execstate;
 }

@@ -99,17 +99,17 @@ PYTHON_TEST_VERSION ?= $(python_version)
 PG_TEST_VERSION ?= $(MAJORVERSION)
 UNSUPPORTS_SQLALCHEMY=$(shell python -c "import sqlalchemy;import psycopg2"  1> /dev/null 2>&1; echo $$?)
 
-TESTS        = test-3/sql/multicorn_cache_invalidation.sql \
-  test-3/sql/multicorn_column_options_test.sql \
-  test-3/sql/multicorn_error_test.sql \
-  test-3/sql/multicorn_logger_test.sql \
-  test-3/sql/multicorn_planner_test.sql \
-  test-3/sql/multicorn_regression_test.sql \
-  test-3/sql/multicorn_sequence_test.sql \
-  test-3/sql/multicorn_test_date.sql \
-  test-3/sql/multicorn_test_dict.sql \
-  test-3/sql/multicorn_test_list.sql \
-  test-3/sql/multicorn_test_sort.sql
+TESTS        = test-3.6/sql/multicorn_cache_invalidation.sql \
+  test-3.6/sql/multicorn_column_options_test.sql \
+  test-3.6/sql/multicorn_error_test.sql \
+  test-3.6/sql/multicorn_logger_test.sql \
+  test-3.6/sql/multicorn_planner_test.sql \
+  test-3.6/sql/multicorn_regression_test.sql \
+  test-3.6/sql/multicorn_sequence_test.sql \
+  test-3.6/sql/multicorn_test_date.sql \
+  test-3.6/sql/multicorn_test_dict.sql \
+  test-3.6/sql/multicorn_test_list.sql \
+  test-3.6/sql/multicorn_test_sort.sql
 
 ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
   TESTS += test-3/sql/multicorn_alchemy_test.sql
