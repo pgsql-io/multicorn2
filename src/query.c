@@ -485,9 +485,11 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 {
 	MulticornBaseQual *qual;
 
+	elog(DEBUG3, "begin makeQual() opname '%s': type '%d'", opname, value->type);
 	switch (value->type)
 	{
 		case T_Const:
+	                elog(DEBUG3, "T_Const");
 			qual = palloc0(sizeof(MulticornConstQual));
 			qual->right_type = T_Const;
 			qual->typeoid = ((Const *) value)->consttype;
@@ -495,11 +497,13 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 			((MulticornConstQual *) qual)->isnull = ((Const *) value)->constisnull;
 			break;
 		case T_Var:
+	                elog(DEBUG3, "T_Var");
 			qual = palloc0(sizeof(MulticornVarQual));
 			qual->right_type = T_Var;
 			((MulticornVarQual *) qual)->rightvarattno = ((Var *) value)->varattno;
 			break;
 		default:
+	                elog(DEBUG3, "default");
 			qual = palloc0(sizeof(MulticornParamQual));
 			qual->right_type = T_Param;
 			((MulticornParamQual *) qual)->expr = value;

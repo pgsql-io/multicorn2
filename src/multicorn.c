@@ -475,19 +475,21 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	MulticornExecState *execstate;
 	TupleDesc	tupdesc = RelationGetDescr(node->ss.ss_currentRelation);
 	ListCell   *lc;
+	elog(DEBUG3, "starting BeginForeignScan()");
 
 	execstate = initializeExecState(fscan->fdw_private);
 	execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
 	execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
 	execstate->qual_list = NULL;
-#if PG_VERSION_NUM < 140000
+//#if PG_VERSION_NUM < 140000
 	foreach(lc, fscan->fdw_exprs)
 	{
-		extractRestrictions(bms_make_singleton(fscan->scan.scanrelid),
+		elog(DEBUG3, "looping in beginForeignScan()");
+		extractRestrictions(NULL, bms_make_singleton(fscan->scan.scanrelid),
 							((Expr *) lfirst(lc)),
 							&execstate->qual_list);
 	}
-#endif
+//#endif
 	initConversioninfo(execstate->cinfos, TupleDescGetAttInMetadata(tupdesc));
 	node->fdw_state = execstate;
 }
