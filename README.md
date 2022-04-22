@@ -39,7 +39,7 @@ sudo apt install -y python3 python3-dev python3-setuptools python3-pip
 
 On CentOS/Rocky/Redhat systems:
 ```bash
-sudo yum install -y bison-devel readline-devel libedit-devel zlib-devel openssl-devel bzip2-devel libmxl2-devel libxslt-devel wget
+sudo yum install -y bison-devel readline-devel libedit-devel zlib-devel openssl-devel bzip2-devel libmxl2 libxslt-devel wget
 sudo yum groupinstall -y 'Development Tools'
 
 sudo yum -y install git python3 python3-devel python3-pip
@@ -53,21 +53,21 @@ sudo python3 get-pip.py
 rm get-pip.py
 ```
 
-### Download & Compile Postgres source code
+### Download & Compile Postgres 10+ source code
 ```bash
 cd ~
 wget https://ftp.postgresql.org/pub/source/v14.2/postgresql-14.2.tar.gz
 tar -xvf postgresql-14.2.tar.gz
-cd pgsql-14.2
+cd postgresql-14.2
 ./configure
 make
-make install
+sudo make install
 ```
 
 ### Download & Compile Multicorn2
 ```bash
 set PATH=/usr/local/pgsql/bin:$PATH
-cd ~/pgsql-14.2/contrib
+cd ~/postgresql-14.2/contrib
 wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v2.2.tar.gz
 tar -xvf v2.2.tar.gz
 cd multicorn2-2.2
