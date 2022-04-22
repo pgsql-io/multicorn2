@@ -30,7 +30,7 @@ cd psql
 
 It is built the same way all standard postgres extensions are built with following dependcies needing to be installed:
 
-### Install Dependencies for Building Postgres & then the Multicorn2 extension
+### Install Dependencies for Building Postgres & the Multicorn2 extension
 On Debian/Ubuntu systems:
 ```bash
 sudo apt install -y build-essential libreadline-dev zlib1g-dev flex bison libxml2-dev libxslt-dev libssl-dev libxml2-utils xsltproc
@@ -52,3 +52,33 @@ wget https://bootstrap.pypa.io/get-pip.py
 sudo python3 get-pip.py
 rm get-pip.py
 ```
+
+### Download & Compile Postgres source code
+```bash
+cd ~
+wget https://ftp.postgresql.org/pub/source/v14.2/postgresql-14.2.tar.gz
+tar -xvf postgresql-14.2.tar.gz
+cd pgsql-14.2
+./configure
+make
+make install
+```
+
+### Download & Compile Multicorn2
+```bash
+set PATH=/usr/local/pgsql/bin:$PATH
+cd ~/pgsql-14.2/contrib
+wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v2.2.tar.gz
+tar -xvf v2.2.tar.gz
+cd multicorn2-2.2
+make
+sudo make install
+```
+
+### Create Multicorn2 Extension 
+In your running instance of Postgres from the PSQL command line
+```sql
+CREATE EXTENSION multicorn;
+```
+
+
