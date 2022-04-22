@@ -30,13 +30,25 @@ cd psql
 
 It is built the same way all standard postgres extensions are built with following dependcies needing to be installed:
 
-### Install Dependencies
+### Install Dependencies for Building Postgres & then the Multicorn2 extension
 On Debian/Ubuntu systems:
 ```bash
-sudo apt install python3 python3-dev python3-setuptools python3-pip
+sudo apt install -y build-essential libreadline-dev zlib1g-dev flex bison libxml2-dev libxslt-dev libssl-dev libxml2-utils xsltproc
+sudo apt install -y python3 python3-dev python3-setuptools python3-pip
 ```
 
 On CentOS/Rocky/Redhat systems:
 ```bash
-sudo yum install python3 python3-devel python3-pip
+sudo yum install -y bison-devel readline-devel libedit-devel zlib-devel openssl-devel bzip2-devel libmxl2-devel libxslt-devel wget
+sudo yum groupinstall -y 'Development Tools'
+
+sudo yum -y install git python3 python3-devel python3-pip
+```
+
+### Upgrade to latest PIP (recommended)
+```bash
+cd ~
+wget https://bootstrap.pypa.io/get-pip.py
+sudo python3 get-pip.py
+rm get-pip.py
 ```
