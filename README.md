@@ -33,11 +33,10 @@ It is built the same way all standard postgres extensions are built with followi
 ### Install Dependencies
 On Debian/Ubuntu systems:
 ```bash
-sudo apt install python3 python3-dev
+sudo apt install python3 python3-dev python3-setuptools python3-pip
 ```
-
 
 On CentOS/Rocky/Redhat systems:
 ```bash
-sudo yum install python3 python3-devel
+sudo yum install python3 python3-devel python3-pip
 ```
