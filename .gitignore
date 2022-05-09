@@ -6,3 +6,5 @@ directories.stamp
 build/
 dist/
 python/multicorn.egg-info/
+results/
+regression.*
