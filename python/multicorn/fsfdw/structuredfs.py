@@ -9,7 +9,7 @@ import io
 import re
 import errno
 import string
-import collections
+import collections.abc
 import fcntl
 from multicorn.compat import unicode_, basestring_
 
@@ -162,7 +162,7 @@ def strict_unicode(value):
     return unicode_(value)
 
 
-class Item(collections.Mapping):
+class Item(collections.abc.Mapping):
     """
     Represents a single file in a :class:`StructuredDirectory`.
 
