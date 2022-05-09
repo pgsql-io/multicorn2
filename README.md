@@ -2,7 +2,7 @@
 Multicorn2
 ==========
 
-Multicorn Python3 Wrapper for Postgresql 10+ Foreign Data Wrapper
+Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested w/ Python 3.6+ & Postgres 10+.
 
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
 
