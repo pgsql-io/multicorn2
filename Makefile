@@ -28,16 +28,13 @@ preflight-check:
 	$(srcdir)/preflight-check.sh
 
 python_code: setup.py
-	cp $(srcdir)/setup.py ./setup--$(EXTVERSION).py
-	sed -i -e "s/__VERSION__/$(EXTVERSION)/g" ./setup--$(EXTVERSION).py
-	$(PYTHON) ./setup--$(EXTVERSION).py install
-	rm ./setup--$(EXTVERSION).py
+	pip${python_version} install .
 
 release-zip: all
 	git archive --format zip --prefix=multicorn-$(EXTVERSION)/ --output ./multicorn-$(EXTVERSION).zip HEAD
 	unzip ./multicorn-$(EXTVERSION).zip
 	rm ./multicorn-$(EXTVERSION).zip
-	sed -i -e "s/__VERSION__/$(EXTVERSION)/g"  ./multicorn-$(EXTVERSION)/META.json  ./multicorn-$(EXTVERSION)/setup.py  ./multicorn-$(EXTVERSION)/python/multicorn/__init__.py
+	sed -i -e "s/__VERSION__/$(EXTVERSION)/g"  ./multicorn-$(EXTVERSION)/META.json ./multicorn-$(EXTVERSION)/python/multicorn/__init__.py
 	zip -r ./multicorn-$(EXTVERSION).zip ./multicorn-$(EXTVERSION)/
 	rm ./multicorn-$(EXTVERSION) -rf
 

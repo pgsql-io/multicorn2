@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 from setuptools import setup, find_packages, Extension
@@ -23,9 +24,19 @@ requires=[]
 if sys.version_info[0] == 2:
     sys.exit("Sorry, you need at least python 3.6 for Multicorn2")
 
+
+def get_version():
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    with open(os.path.join(script_dir, 'multicorn.control')) as f:
+        for line in f:
+            if line.startswith('default_version'):
+                return line.strip().split("'")[-2]
+        raise RuntimeError('default_version not found in multicorn.control')
+
+
 setup(
  name='multicorn',
- version='__VERSION__',
+ version=get_version(),
  author='Lussier',
  license='Postgresql',
  package_dir={'': 'python'},
