@@ -2,20 +2,20 @@
 Multicorn2
 ==========
 
-Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested w/ Python 3.6+ & Postgres 10+.
+Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested on Linux w/ Python 3.6+ & Postgres 10+.
 
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
 
 Multicorn2 is distributed under the PostgreSQL license. See the LICENSE file for
 details.
 
-## Using in PGSQL-IO
+## Using in OSCG.IO
 
-1.) Install PGSQL.IO from the command line, in your home directory, with the curl command at the top of https://pgsql.io
+1.) Install OSCG.IO from the command line, in your home directory, with the curl command at the top of https://oscg.io/usage.html
 
-2.) Change into the pgsql directory and install pgXX
+2.) Change into the oscg directory and install pgXX
 ```bash
-cd psql
+cd oscg
 ./io install pg14 --start
 ./io install multicorn2
 ```
@@ -56,9 +56,9 @@ rm get-pip.py
 ### Download & Compile Postgres 10+ source code
 ```bash
 cd ~
-wget https://ftp.postgresql.org/pub/source/v14.2/postgresql-14.2.tar.gz
-tar -xvf postgresql-14.2.tar.gz
-cd postgresql-14.2
+wget https://ftp.postgresql.org/pub/source/v14.3/postgresql-14.3.tar.gz
+tar -xvf postgresql-14.3.tar.gz
+cd postgresql-14.3
 ./configure
 make
 sudo make install
@@ -67,10 +67,10 @@ sudo make install
 ### Download & Compile Multicorn2
 ```bash
 set PATH=/usr/local/pgsql/bin:$PATH
-cd ~/postgresql-14.2/contrib
-wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v2.2.tar.gz
-tar -xvf v2.2.tar.gz
-cd multicorn2-2.2
+cd ~/postgresql-14.3/contrib
+wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v2.3.tar.gz
+tar -xvf v2.3.tar.gz
+cd multicorn2-2.3
 make
 sudo make install
 ```
