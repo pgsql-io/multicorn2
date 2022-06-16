@@ -26,7 +26,7 @@ cd oscg
       ./io install bqfdw
 ```
 
-## Building Multicorn2 from Source
+## Building Multicorn2 against Postgres from Source
 
 It is built the same way all standard postgres extensions are built with following dependcies needing to be installed:
 
@@ -81,4 +81,37 @@ In your running instance of Postgres from the PSQL command line
 CREATE EXTENSION multicorn;
 ```
 
+## Building Multicorn2 against pre-built Postgres
 
+When using a pre-built Postgres installed using your OS package manager, you will need the additional package that enables Postgres extensions to be built:
+
+### Install Dependencies for Building the Multicorn2 extension
+On Debian/Ubuntu systems:
+```bash
+sudo apt install -y build-essential ... postgresql-server-dev-13
+sudo apt install -y python3 python3-dev python3-setuptools python3-pip
+```
+
+On CentOS/Rocky/Redhat systems:
+```bash
+sudo yum install -y ... <postgres server dev package>
+sudo yum groupinstall -y 'Development Tools'
+sudo yum -y install git python3 python3-devel python3-pip
+```
+
+### Download & Compile Multicorn2
+```bash
+wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v2.3.tar.gz
+tar -xvf v2.3.tar.gz
+cd multicorn2-2.3
+make
+sudo make install
+```
+
+Note that the last step installs both the extension into Postgres and also the Python part. The latter is done using "pip install", and so can be undone using "pip uninstall".
+
+### Create Multicorn2 Extension 
+In your running instance of Postgres from the PSQL command line
+```sql
+CREATE EXTENSION multicorn;
+```
