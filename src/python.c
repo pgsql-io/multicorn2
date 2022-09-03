@@ -50,6 +50,7 @@ PyObject *paramDefToPython(List *paramdef, ConversionInfo ** cinfos,
 
 PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
 PyObject   *datumStringToPython(Datum node, ConversionInfo * cinfo);
+PyObject   *datumBlankPaddedStringToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumNumberToPython(Datum node, ConversionInfo * cinfo);
 PyObject   *datumDateToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
@@ -1373,6 +1374,20 @@ datumStringToPython(Datum datum, ConversionInfo * cinfo)
 }
 
 PyObject *
+datumBlankPaddedStringToPython(Datum datum, ConversionInfo * cinfo)
+{
+	char	   *temp;
+	ssize_t		size;
+	PyObject   *result;
+
+	temp = datum == 0 ? "?" : TextDatumGetCString(datum);
+	size = strlen(temp);
+	size = bpchartruelen(temp, size);
+	result = PyUnicode_Decode(temp, size, getPythonEncodingName(), NULL);
+	return result;
+}
+
+PyObject *
 datumUnknownToPython(Datum datum, ConversionInfo * cinfo, Oid type)
 {
 	char	   *temp;
@@ -1509,6 +1524,8 @@ datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 		case TEXTOID:
 		case VARCHAROID:
 			return datumStringToPython(datum, cinfo);
+		case BPCHAROID:
+			return datumBlankPaddedStringToPython(datum, cinfo);
 		case NUMERICOID:
 			return datumNumberToPython(datum, cinfo);
 		case DATEOID:
