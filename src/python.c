@@ -886,7 +886,7 @@ getDeparsedSortGroup(PyObject *sortKey)
 	MulticornDeparsedSortGroup *md = palloc0(sizeof(MulticornDeparsedSortGroup));
 	PyObject * p_temp;
 	p_temp = PyObject_GetAttrString(sortKey, "attname");
-	md->attname = (Name) strdup(PyUnicode_AS_DATA(p_temp));
+	md->attname = (Name) strndup((const char *)PyUnicode_1BYTE_DATA(p_temp), PyUnicode_GET_LENGTH(p_temp));
 	Py_DECREF(p_temp);
 	p_temp = PyObject_GetAttrString(sortKey, "attnum");
 	md->attnum = (int) PyLong_AsLong(p_temp);
@@ -901,7 +901,7 @@ getDeparsedSortGroup(PyObject *sortKey)
 	if(p_temp == Py_None)
 		md->collate = 0;
 	else
-		md->collate = (Name) strdup(PyUnicode_AS_DATA(p_temp));
+		md->collate = (Name) strndup((const char *)PyUnicode_1BYTE_DATA(p_temp), PyUnicode_GET_LENGTH(p_temp));
 	Py_DECREF(p_temp);
 	return md;
 }
