@@ -284,7 +284,11 @@ multicornGetForeignRelSize(PlannerInfo *root,
 		foreach(lc, extractColumns(baserel->reltarget->exprs, baserel->baserestrictinfo))
 		{
 			Var		   *var = (Var *) lfirst(lc);
+#if PG_VERSION_NUM < 150000
 			Value	   *colname;
+#else
+			String	   *colname;
+#endif
 
 			/*
 			 * Store only a Value node containing the string name of the

@@ -460,7 +460,11 @@ extractClauseFromNullTest(Relids base_relids,
 /*
  *	Returns a "Value" node containing the string name of the column from a var.
  */
+#if PG_VERSION_NUM < 150000
 Value *
+#else
+String *
+#endif
 colnameFromVar(Var *var, PlannerInfo *root, MulticornPlanState * planstate)
 {
 	RangeTblEntry *rte = rte = planner_rt_fetch(var->varno, root);

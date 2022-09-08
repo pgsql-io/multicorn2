@@ -199,7 +199,12 @@ List	   *extractColumns(List *reltargetlist, List *restrictinfolist);
 void initConversioninfo(ConversionInfo ** cinfo,
 		AttInMetadata *attinmeta);
 
-Value *colnameFromVar(Var *var, PlannerInfo *root,
+#if PG_VERSION_NUM < 150000
+Value
+#else
+String
+#endif
+*colnameFromVar(Var *var, PlannerInfo *root,
 		MulticornPlanState * state);
 
 void computeDeparsedSortGroup(List *deparsed, MulticornPlanState *planstate,

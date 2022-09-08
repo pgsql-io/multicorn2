@@ -259,7 +259,11 @@ valuesToPySet(List *targetlist)
 
 	foreach(lc, targetlist)
 	{
+#if PG_VERSION_NUM < 150000
 		Value	   *value = (Value *) lfirst(lc);
+#else
+		String	   *value = lfirst_node(String, lc);
+#endif
 		PyObject   *pyString = PyString_FromString(strVal(value));
 
 		PySet_Add(result, pyString);
