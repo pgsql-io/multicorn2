@@ -28,7 +28,9 @@ preflight-check:
 	$(srcdir)/preflight-check.sh
 
 python_code: setup.py
-	pip${python_version} install .
+	$(eval python_major_version := $(shell echo ${python_version} | cut -d '.' -f 1))
+	$(eval PIP ?= $(shell [ -x "$$(command -v pip${python_version})" ] && echo pip${python_version} || [ -x "$$(command -v pip${python_major_version})" ] && echo pip${python_major_version} || echo pip))
+	$(PIP) install .
 
 release-zip: all
 	git archive --format zip --prefix=multicorn-$(EXTVERSION)/ --output ./multicorn-$(EXTVERSION).zip HEAD
