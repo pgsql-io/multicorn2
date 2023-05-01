@@ -29,7 +29,7 @@ preflight-check:
 
 python_code: setup.py
 	$(eval python_major_version := $(shell echo ${python_version} | cut -d '.' -f 1))
-	$(eval PIP ?= $(shell [ -x "$$(command -v pip${python_version})" ] && echo pip${python_version} || [ -x "$$(command -v pip${python_major_version})" ] && echo pip${python_major_version} || echo pip))
+	$(eval PIP ?= $(shell ([ -x "$$(command -v pip${python_version})" ] && echo pip${python_version}) || ([ -x "$$(command -v pip${python_major_version})" ] && echo pip${python_major_version}) || echo pip))
 	$(PIP) install .
 
 release-zip: all
