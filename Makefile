@@ -30,7 +30,13 @@ preflight-check:
 python_code: setup.py
 	$(eval python_major_version := $(shell echo ${python_version} | cut -d '.' -f 1))
 	$(eval PIP ?= $(shell ([ -x "$$(command -v pip${python_version})" ] && echo pip${python_version}) || ([ -x "$$(command -v pip${python_major_version})" ] && echo pip${python_major_version}) || echo pip))
-	$(PIP) install .
+	#
+	# Strictly speaking, --break-system-packages arrived in 23.0.1, but that's
+	# too hard to check for.
+	#
+	$(eval PIP_VERSION := $(shell pip${python_version} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1))
+	$(eval PIP_FLAGS := $(shell [ $(PIP_VERSION) -ge 23 ] && echo "--break-system-packages"))
+	$(PIP) install $(PIP_FLAGS) .
 
 release-zip: all
 	git archive --format zip --prefix=multicorn-$(EXTVERSION)/ --output ./multicorn-$(EXTVERSION).zip HEAD
