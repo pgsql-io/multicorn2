@@ -27,7 +27,7 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql directories.stamp
 preflight-check:
 	$(srcdir)/preflight-check.sh
 
-python_code: setup.py
+python_code: setup.py pyproject.toml
 	$(eval python_major_version := $(shell echo ${python_version} | cut -d '.' -f 1))
 	$(eval PIP ?= $(shell ([ -x "$$(command -v pip${python_version})" ] && echo pip${python_version}) || ([ -x "$$(command -v pip${python_major_version})" ] && echo pip${python_major_version}) || echo pip))
 	$(PIP) install .

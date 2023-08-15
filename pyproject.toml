@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multicorn"
+readme = "README.md"
+requires-python = ">=3.6"
+license = {text = "Postgresql"}
+authors = [{name = "Lussier"}]
+dynamic = ["version"]
+
+[tool.setuptools]
+package-dir = {"" = "python"}
+packages = ["multicorn", "multicorn.fsfdw"]
+include-package-data = false
+
+[tool.pytest.ini_options]
+python_files = ["test*.py"]
