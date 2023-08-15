@@ -30,7 +30,7 @@ preflight-check:
 python_code: setup.py
 	$(eval python_major_version := $(shell echo ${python_version} | cut -d '.' -f 1))
 	$(eval PIP ?= $(shell ([ -x "$$(command -v pip${python_version})" ] && echo pip${python_version}) || ([ -x "$$(command -v pip${python_major_version})" ] && echo pip${python_major_version}) || echo pip))
-	$(PIP) install .
+	$(PIP) install $(PIP_FLAGS) .
 
 release-zip: all
 	git archive --format zip --prefix=multicorn-$(EXTVERSION)/ --output ./multicorn-$(EXTVERSION).zip HEAD
@@ -90,6 +90,13 @@ else
 	override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
 endif
 
+#
+# Strictly speaking, --break-system-packages arrived in 23.0.1, but that's
+# too hard to check for.
+#
+PIP_VERSION = $(shell pip${python_version} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1)
+PIP_FLAGS = $(shell [ $(PIP_VERSION) -ge 23 ] && echo "--break-system-packages")
+
 ifeq ($(PORTNAME),Darwin)
 	override LDFLAGS += -undefined dynamic_lookup -bundle_loader $(shell $(PG_CONFIG) --bindir)/postgres
 endif
@@ -130,3 +137,4 @@ REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION)
 
 $(info Python version is $(python_version))
+$(info Pip version is $(PIP_VERSION))
