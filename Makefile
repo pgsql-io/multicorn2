@@ -34,7 +34,14 @@ python_code: setup.py pyproject.toml
 	# Strictly speaking, --break-system-packages arrived in 23.0.1, but that's
 	# too hard to check for.
 	#
-	$(eval PIP_VERSION := $(shell pip${python_version} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1))
+	$(eval PIP_VERSION := $(shell $(PIP) --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1))
+	$(eval PIP_FLAGS := $(shell [ $(PIP_VERSION) -ge 23 ] && echo "--break-system-packages"))
+	#
+	# Workaround https://github.com/pgsql-io/multicorn2/issues/34, and then
+	# re-evaluate PIP_VERSION/PIP_FLAGS.
+	#
+	$(PIP) install $(PIP_FLAGS) --upgrade 'pip>=23'
+	$(eval PIP_VERSION := $(shell $(PIP) --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1))
 	$(eval PIP_FLAGS := $(shell [ $(PIP_VERSION) -ge 23 ] && echo "--break-system-packages"))
 	$(PIP) install $(PIP_FLAGS) .
 
