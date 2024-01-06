@@ -9,6 +9,22 @@ The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in
 Multicorn2 is distributed under the PostgreSQL license. See the LICENSE file for
 details.
 
+## How it works
+
+In use, Multicorn includes a Python package which contains:
+
+- A `__init__.py` which provides a base class from which your new,
+  custom, FDW will derive.
+- A `utils.py` containing diagnostic support code your FDW can use.
+- Several useful example FDW implementations.
+
+Multicorn also includes, under the covers, **two** shared libraries:
+
+- `multicorn.so` contains a generic Postgres FDW extension which
+  interfaces between Postgres and your custom FDW.
+- `_utils.so` is a CPython extension which provides support for
+  the previously mentioned `utils.py`.
+
 ## Using in OSCG.IO
 
 1.) Install OSCG.IO from the command line, in your home directory, with the curl command at the top of https://oscg.io/usage.html
