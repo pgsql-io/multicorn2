@@ -32,4 +32,5 @@ def get_version():
 
 setup(
     version=get_version(),
+    ext_modules=[multicorn_utils_module]
 )
