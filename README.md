@@ -2,7 +2,7 @@
 Multicorn2
 ==========
 
-Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested on Linux w/ Python 3.6+ & Postgres 10 thru 14.  Support for Postgres 14 is known to have some issues with predicate pushdown and updating.  We are starting to try and build w/ PG15 and look at what needs improving from PG14.
+Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested on Linux w/ Python 3.6+ & Postgres 12 thru 16.  Support for Postgres 14+ is known to have some issues with predicate pushdown and updating.
 
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
 
@@ -69,7 +69,7 @@ sudo python3 get-pip.py
 rm get-pip.py
 ```
 
-### Download & Compile Postgres 10+ source code
+### Download & Compile Postgres 12+ source code
 ```bash
 cd ~
 wget https://ftp.postgresql.org/pub/source/v14.3/postgresql-14.3.tar.gz
@@ -117,9 +117,9 @@ sudo yum -y install git python3 python3-devel python3-pip
 
 ### Download & Compile Multicorn2
 ```bash
-wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v2.3.tar.gz
-tar -xvf v2.3.tar.gz
-cd multicorn2-2.3
+wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v2.5.tar.gz
+tar -xvf v2.5.tar.gz
+cd multicorn2-2.5
 make
 sudo make install
 ```

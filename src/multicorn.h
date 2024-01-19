@@ -14,6 +14,10 @@
 #include "nodes/makefuncs.h"
 #include "nodes/pg_list.h"
 
+#ifndef PG_FUNCNAME_MACRO
+#define PG_FUNCNAME_MACRO	__func__
+#endif
+
 #if PG_VERSION_NUM < 120000
 #include "nodes/relation.h"
 #endif
