@@ -124,11 +124,15 @@ py_check_interrupts(PyObject *self, PyObject *args, PyObject *kwargs)
 }
 
 
+#pragma GCC diagnostic push
+/* The CPython documentation requires the casting. */
+#pragma GCC diagnostic ignored "-Wcast-function-type"
 static PyMethodDef UtilsMethods[] = {
 	{"_log_to_postgres", (PyCFunction) log_to_postgres, METH_VARARGS | METH_KEYWORDS, "Log to postresql client"},
 	{"check_interrupts", (PyCFunction) py_check_interrupts, METH_VARARGS | METH_KEYWORDS, "Gives control back to PostgreSQL"},
 	{NULL, NULL, 0, NULL}
 };
+#pragma GCC diagnostic pop
 
 static struct PyModuleDef moduledef = {
 	PyModuleDef_HEAD_INIT,
@@ -144,6 +148,11 @@ static struct PyModuleDef moduledef = {
 
 #define INITERROR return NULL
 
+#pragma GCC diagnostic push
+/* Useless message. */
+#pragma GCC diagnostic ignored "-Wmissing-prototypes"
+/* Presumably st is a placeholder for something? */
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 PyObject *
 PyInit__utils(void)
 {
@@ -156,3 +165,4 @@ PyInit__utils(void)
 
 	return module;
 }
+#pragma GCC diagnostic pop
