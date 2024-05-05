@@ -637,11 +637,17 @@ multicornAddForeignUpdateTargets(
 	{
 		ereport(ERROR, (errmsg("%s", "The rowid attribute does not exist")));
 	}
+
+#if PG_VERSION_NUM >= 140000
+	add_row_identity_var(root, var, parsetree->resultRelation, strdup(attrname));
+#else
 	tle = makeTargetEntry((Expr *) var,
 						  list_length(parsetree->targetList) + 1,
 						  strdup(attrname),
 						  true);
 	parsetree->targetList = lappend(parsetree->targetList, tle);
+#endif
+
 	Py_DECREF(instance);
 }
 
@@ -716,6 +722,10 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 		}
 	}
 	modstate->rowidAttno = ExecFindJunkAttributeInTlist(subplan->targetlist, modstate->rowidAttrName);
+	if (modstate->rowidAttno == InvalidAttrNumber)
+	{
+		ereport(ERROR, (errmsg("%s", "The rowid attribute does not exist in subplan")));
+	}
 	resultRelInfo->ri_FdwState = modstate;
 }
 
