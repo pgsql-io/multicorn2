@@ -722,10 +722,6 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 		}
 	}
 	modstate->rowidAttno = ExecFindJunkAttributeInTlist(subplan->targetlist, modstate->rowidAttrName);
-	if (modstate->rowidAttno == InvalidAttrNumber)
-	{
-		ereport(ERROR, (errmsg("%s", "The rowid attribute does not exist in subplan")));
-	}
 	resultRelInfo->ri_FdwState = modstate;
 }
 
@@ -774,6 +770,11 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	ConversionInfo *cinfo = modstate->rowidCinfo;
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
+	if (modstate->rowidAttno == InvalidAttrNumber)
+	{
+		ereport(ERROR, (errmsg("%s", "The rowid_column could not be identified")));
+	}
+
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
 	p_new_value = PyObject_CallMethod(fdw_instance, "delete", "(O)", p_row_id);
 	errorCheck();
@@ -809,6 +810,11 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	bool		is_null;
 	ConversionInfo *cinfo = modstate->rowidCinfo;
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
+
+	if (modstate->rowidAttno == InvalidAttrNumber)
+	{
+		ereport(ERROR, (errmsg("%s", "The rowid_column could not be identified")));
+	}
 
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
 	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O)", p_row_id,
