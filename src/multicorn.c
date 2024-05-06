@@ -14,6 +14,9 @@
 #if PG_VERSION_NUM < 120000
 #include "optimizer/var.h"
 #endif
+#if PG_VERSION_NUM >= 140000
+#include "optimizer/appendinfo.h"
+#endif
 #include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sysattr.h"
