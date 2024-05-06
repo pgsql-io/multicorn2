@@ -14,6 +14,9 @@
 #if PG_VERSION_NUM < 120000
 #include "optimizer/var.h"
 #endif
+#if PG_VERSION_NUM >= 140000
+#include "optimizer/appendinfo.h"
+#endif
 #include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sysattr.h"
@@ -637,11 +640,17 @@ multicornAddForeignUpdateTargets(
 	{
 		ereport(ERROR, (errmsg("%s", "The rowid attribute does not exist")));
 	}
+
+#if PG_VERSION_NUM >= 140000
+	add_row_identity_var(root, var, parsetree->resultRelation, strdup(attrname));
+#else
 	tle = makeTargetEntry((Expr *) var,
 						  list_length(parsetree->targetList) + 1,
 						  strdup(attrname),
 						  true);
 	parsetree->targetList = lappend(parsetree->targetList, tle);
+#endif
+
 	Py_DECREF(instance);
 }
 
@@ -764,6 +773,11 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	ConversionInfo *cinfo = modstate->rowidCinfo;
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
+	if (modstate->rowidAttno == InvalidAttrNumber)
+	{
+		ereport(ERROR, (errmsg("%s", "The rowid_column could not be identified")));
+	}
+
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
 	p_new_value = PyObject_CallMethod(fdw_instance, "delete", "(O)", p_row_id);
 	errorCheck();
@@ -799,6 +813,11 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	bool		is_null;
 	ConversionInfo *cinfo = modstate->rowidCinfo;
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
+
+	if (modstate->rowidAttno == InvalidAttrNumber)
+	{
+		ereport(ERROR, (errmsg("%s", "The rowid_column could not be identified")));
+	}
 
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
 	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O)", p_row_id,
