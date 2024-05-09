@@ -341,6 +341,10 @@ class ForeignDataWrapper(object):
         """
         raise NotImplementedError("This FDW does not support the writable API")
 
+    @property
+    def modify_batch_size(self):
+        return 1
+
     def insert(self, values):
         """
         Insert a tuple defined by ''values'' in the foreign table.

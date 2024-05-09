@@ -170,6 +170,7 @@ void pythonResultToTuple(PyObject *p_value,
 					StringInfo buffer);
 PyObject   *tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos);
 char	   *getRowIdColumn(PyObject *fdw_instance);
+int			getModifyBatchSize(PyObject *fdw_instance);
 PyObject   *optionsListToPyDict(List *options);
 const char *getPythonEncodingName(void);
 
