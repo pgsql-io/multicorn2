@@ -193,8 +193,10 @@ multicorn_handler(PG_FUNCTION_ARGS)
 	fdw_routine->ExecForeignUpdate = multicornExecForeignUpdate;
 	fdw_routine->EndForeignModify = multicornEndForeignModify;
 
+#if PG_VERSION_NUM >= 140000
 	fdw_routine->GetForeignModifyBatchSize = multicornGetForeignModifyBatchSize;
 	fdw_routine->ExecForeignBatchInsert = multicornExecForeignBatchInsert;
+#endif
 
 	fdw_routine->ImportForeignSchema = multicornImportForeignSchema;
 
