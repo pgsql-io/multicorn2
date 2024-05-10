@@ -94,6 +94,16 @@
         nativeBuildInputs = [ target_postgresql ];
       };
 
+      makePostgresWithPlPython = test_python: test_postgresql:
+        (test_postgresql.override {
+          # write_filesystem.sql uses plpython3u, so, we enable it... This causes 25 rebuilds of postgresql (each PG
+          # version * each Python version)... it might be worth either removing / rewriting this test suite,
+          # making it optional, or using at least one consistent version of python for the plpython3u build... or
+          # just using a new custom build cache to avoid rebuilds.
+          pythonSupport = true;
+          python3 = test_python;
+        });
+
       makeTestSuite = test_python: test_postgresql: pkgs.stdenv.mkDerivation {
         name = "multicorn2-python-test";
 
@@ -122,14 +132,7 @@
 
         nativeCheckInputs = [
           (
-            (test_postgresql.override {
-              # write_filesystem.sql uses plpython3u, so, we enable it... This causes 25 rebuilds of postgresql (each PG
-              # version * each Python version)... it might be worth either removing / rewriting this test suite,
-              # making it optional, or using at least one consistent version of python for the plpython3u build... or
-              # just using a new custom build cache to avoid rebuilds.
-              pythonSupport = true;
-              python3 = test_python;
-            }).withPackages (ps: [
+            (makePostgresWithPlPython test_python test_postgresql).withPackages (ps: [
               (makeMulticornPostgresExtension test_python test_postgresql)
             ])
           )
@@ -169,11 +172,13 @@
       };
 
       packages = rec {
-
         # Tests probably shouldn't be in "packages"?  But flake schema doesn't seem to support a separate "tests"
         # output...
 
-        # Example: nix build .#testSuites.test_pg12_py39
+        # The true targets for tests are either for a specific PG & Python version, or for all of them.
+        # eg:
+        # nix build .#testSuites.test_pg12_py39
+        # nix build .#allTestSuites
         testSuites = pkgs.lib.foldl' (acc: combo:
             let
               name = makeTestSuiteName combo;
@@ -182,7 +187,6 @@
             acc // { ${name} = testSuite; }
           ) {} testVersionCombos;
 
-        # Example: nix build .#allTestSuites
         allTestSuites = (pkgs.stdenv.mkDerivation {
           name = "multicorn2-test-all";
           buildInputs = builtins.attrValues testSuites;
@@ -190,6 +194,36 @@
           installPhase = "touch $out";
         });
 
+        # The postgresWithPlPython steps are used so that we can build Postgres instances that include the the
+        # plpython3u extension.  This isn't the default in Nixpkgs, so we need to build it ourselves.  But because we have
+        # to build a lot of them (one each for each version of python and postgresql), we create a separate target so that
+        # we can build them and then push them to a binary cache.
+        # eg.
+        # nix build .#postgresWithPlPython.postgres-test_pg12_py39
+        # nix build .#allPostgresWithPlPython
+
+        postgresWithPlPython = pkgs.lib.foldl' (acc: combo:
+            let
+              name = "postgres-${makeTestSuiteName combo}";
+              testSuite = makePostgresWithPlPython combo.python combo.postgres;
+            in
+            acc // { ${name} = testSuite; }
+          ) {} testVersionCombos;
+
+        allPostgresWithPlPython = (pkgs.stdenv.mkDerivation {
+          name = "multicorn2-postgres-all";
+          buildInputs = builtins.attrValues postgresWithPlPython;
+          phases = [ "installPhase" ];
+          # In order to make sure that allPostgresWithPlPython can be pushed to a binary cache and include all the built
+          # Postgres instances, the installPhase creates symlinks to the built instances.
+          installPhase = ''
+            mkdir -p $out
+            ${pkgs.lib.concatStringsSep "\n" (pkgs.lib.mapAttrsToList (name: outPath: ''
+              ln -s ${outPath} $out/${name}
+            '') postgresWithPlPython)}
+            touch $out/placeholder
+          '';
+        });
       };
     });
 }
