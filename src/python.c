@@ -98,6 +98,8 @@ void appendBinaryStringInfoQuote(StringInfo buffer,
 
 static void begin_remote_xact(CacheEntry * entry);
 
+static char* ascii_encoding_name = "ascii";
+
 /*
  * Get a (python) encoding name for an attribute.
  */
@@ -108,7 +110,7 @@ getPythonEncodingName()
 
 	if (strcmp(encoding_name, "SQL_ASCII") == 0)
 	{
-		encoding_name = "ascii";
+		encoding_name = ascii_encoding_name;
 	}
 	return encoding_name;
 }
