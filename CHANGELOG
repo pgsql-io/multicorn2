@@ -1,9 +1,14 @@
+2.1:
+   - drop support for Python 3 versions prior to 3.9
+   - drop support for Postgres versions prior to 12
+   - confirm support for Python 3.11 & 3.12
+
 2.0:
-	- drop support for Postgres versions prior to 10
-	- drop support for Python 2
-	- support for Python 3.6++
-	- add support for PG13 
-	- experimental support for PG14
+   - drop support for Postgres versions prior to 10
+   - drop support for Python 2
+   - support for Python 3.6++
+   - add support for PG13 
+   - experimental support for PG14
 
 1.4.0:
     - Lots of maintenance done by Kamil Gałuszka
