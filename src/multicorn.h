@@ -18,9 +18,6 @@
 #define PG_FUNCNAME_MACRO	__func__
 #endif
 
-#if PG_VERSION_NUM < 120000
-#include "nodes/relation.h"
-#endif
 #include "utils/builtins.h"
 #include "utils/syscache.h"
 
