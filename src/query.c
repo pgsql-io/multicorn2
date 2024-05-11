@@ -1,9 +1,5 @@
 #include "multicorn.h"
-#if PG_VERSION_NUM < 120000
-#include "optimizer/var.h"
-#else
 #include "optimizer/optimizer.h"
-#endif
 #include "optimizer/clauses.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/subselect.h"
@@ -16,10 +12,7 @@
 #include "parser/parsetree.h"
 #include "pg_config.h"
 
-/* Third argument to get_attname was introduced in [8237f27] (release 11) */
-#if PG_VERSION_NUM >= 110000
 #define get_attname(x, y) get_attname(x, y, true)
-#endif
 
 void extractClauseFromOpExpr(
 #if PG_VERSION_NUM >= 140000

@@ -11,9 +11,7 @@
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
 #include "optimizer/clauses.h"
-#if PG_VERSION_NUM < 120000
 #include "optimizer/var.h"
-#endif
 #if PG_VERSION_NUM >= 140000
 #include "optimizer/appendinfo.h"
 #endif

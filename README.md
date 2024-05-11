@@ -2,7 +2,7 @@
 Multicorn2
 ==========
 
-Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested on Linux w/ Python 3.6+ & Postgres 12 thru 16.  Support for Postgres 14+ is known to have some issues with predicate pushdown and updating.
+Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested on Linux w/ Python 3.9++ & Postgres 12++.  Support for Postgres 14+ is known to have some issues with predicate pushdown and updating. (lets get these fixed)
 
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
 
@@ -25,15 +25,15 @@ Multicorn also includes, under the covers, **two** shared libraries:
 - `_utils.so` is a CPython extension which provides support for
   the previously mentioned `utils.py`.
 
-## Using in OSCG.IO
+## Using in PGEDGE (see https://github.com/pgedge/pgedge)
 
-1.) Install OSCG.IO from the command line, in your home directory, with the curl command at the top of https://oscg.io/usage.html
+1.) Install pgEdge from the command line, in your home directory, with the curl command at the top of pgedge/pgedge
 
-2.) Change into the oscg directory and install pgXX
+2.) Change into the pgedge directory and install pgXX
 ```bash
-cd oscg
-./io install pg13 --start
-./io install multicorn2
+cd pgedge
+./pgedge install pg16 --start
+./pgedge install multicorn2
 ```
       
 3.) Use multicorn as you normally would AND you can install popular FDW's that use multicorn such as ElasticSerachFDW & BigQueryFDW
