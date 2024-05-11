@@ -1,7 +1,11 @@
-2.1:
+3.0:
+done so far:
    - drop support for Python 3 versions prior to 3.9
    - drop support for Postgres versions prior to 12
+
+to do:
    - confirm support for Python 3.11 & 3.12
+   - confirm support for pg16 & pg17
 
 2.0:
    - drop support for Postgres versions prior to 10
