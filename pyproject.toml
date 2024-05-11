@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "multicorn"
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.9"
 license = {text = "Postgresql"}
 authors = [{name = "Lussier"}]
 dynamic = ["version"]

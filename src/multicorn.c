@@ -11,9 +11,6 @@
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
 #include "optimizer/clauses.h"
-#if PG_VERSION_NUM < 120000
-#include "optimizer/var.h"
-#endif
 #if PG_VERSION_NUM >= 140000
 #include "optimizer/appendinfo.h"
 #endif
@@ -309,9 +306,9 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	{
 		extractRestrictions(
 #if PG_VERSION_NUM >= 140000
-			root, 
+			root,
 #endif
-			baserel->relids, 
+			baserel->relids,
 			((RestrictInfo *) lfirst(lc))->clause,
 			&planstate->qual_list);
 
@@ -427,9 +424,9 @@ multicornGetForeignPlan(PlannerInfo *root,
 		{
 			extractRestrictions(
 #if PG_VERSION_NUM >= 140000
-				root, 
+				root,
 #endif
-				baserel->relids, 
+				baserel->relids,
 				(Expr *) lfirst(lc),
 				&planstate->qual_list);
 		}
@@ -493,7 +490,7 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 		elog(DEBUG3, "looping in beginForeignScan()");
 		extractRestrictions(
 #if PG_VERSION_NUM >= 140000
-NULL, 
+NULL,
 #endif
 bms_make_singleton(fscan->scan.scanrelid),
 							((Expr *) lfirst(lc)),
@@ -685,7 +682,7 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	MulticornModifyState *modstate = palloc0(sizeof(MulticornModifyState));
 	Relation	rel = resultRelInfo->ri_RelationDesc;
 	TupleDesc	desc = RelationGetDescr(rel);
-	PlanState  *ps = 
+	PlanState  *ps =
 #if PG_VERSION_NUM >= 140000
 		outerPlanState(mtstate);
 #else

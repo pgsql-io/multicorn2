@@ -9,7 +9,7 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system: let
       debugBuild = false;
-      multicornVersion = "2.5";
+      multicornVersion = "3.0";
 
       pkgs = nixpkgs.legacyPackages.${system};
 
@@ -113,14 +113,8 @@
         # Local source directory, but only including the files necessary for running the regression tests...
         src = [
           ./Makefile
-          ./test-3.6
-          ./test-3.7
-          ./test-3.8
           ./test-3.9
           ./test-3.10
-          ./test-3.11
-          ./test-3.12
-          ./test-3.13
           ./test-common
         ];
         unpackPhase = ''
