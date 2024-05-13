@@ -6,6 +6,7 @@ done so far:
    - fix bug in error handling on SQL_ASCII databases (https://github.com/pgsql-io/multicorn2/pull/43)
    - PG14: fix UPDATE to fetch all columns for consistency (https://github.com/pgsql-io/multicorn2/pull/48)
    - PG14: fix DELETE RETURNING providing NULL values (https://github.com/pgsql-io/multicorn2/pull/47)
+   - Update SQLAlchemy FDW to be tested against SQLAlchemy 2.0; earlier versions not supported but may work (https://github.com/pgsql-io/multicorn2/pull/49)
 
 to do:
    - confirm support for Python 3.11 & 3.12
@@ -36,4 +37,3 @@ to do:
 1.3.3:
     - Add compatibility with PostgreSQL 9.6
     - Fix bug with typecasting of params
-

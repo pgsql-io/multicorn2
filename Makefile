@@ -124,7 +124,7 @@ TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql 
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_sort.sql
 
 ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
-  TESTS += test-3/sql/multicorn_alchemy_test.sql
+  TESTS += test-$(PYTHON_TEST_VERSION)/sql/multicorn_alchemy_test.sql
 endif
 
   TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_filesystem.sql \
@@ -140,7 +140,7 @@ endif
   endif
 
 REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
-REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION) --encoding=UTF8
+REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION) --encoding=UTF8 --host=localhost
 
 $(info Python version is $(python_version))
 

@@ -13,8 +13,13 @@
 
       pkgs = nixpkgs.legacyPackages.${system};
 
-      devPostgresql = pkgs.postgresql_16.overrideAttrs (oldAttrs: {} // pkgs.lib.optionalAttrs debugBuild { dontStrip = true; }); # If debug symbols are needed.
-      devPython = pkgs.python3;
+      requiredPythonPackages = ps: (
+        # Such that we pass the UNSUPPORTS_SQLALCHEMY check in Makefile and can run the SQLAlchemy tests
+        [ ps.sqlalchemy ] ++ ps.sqlalchemy.optional-dependencies.postgresql
+      );
+
+      devPostgresql = pkgs.postgresql_14.overrideAttrs (oldAttrs: {} // pkgs.lib.optionalAttrs debugBuild { dontStrip = true; }); # If debug symbols are needed.
+      devPython = pkgs.python3.withPackages (ps: (requiredPythonPackages ps));
 
       testPythonVersions = with pkgs; [
         python39
@@ -58,7 +63,10 @@
           chmod -R +w .
         '';
 
-        buildInputs = target_postgresql.buildInputs ++ [ target_postgresql target_python ];
+        buildInputs = target_postgresql.buildInputs ++ [
+          target_postgresql
+          (target_python.withPackages (ps: (requiredPythonPackages ps)))
+        ];
         installPhase = ''
           runHook preInstall
           install -D multicorn${target_postgresql.dlSuffix} -t $out/lib/
@@ -130,17 +138,16 @@
               (makeMulticornPostgresExtension test_python test_postgresql)
             ])
           )
-          (test_python.withPackages (ps: [
-            (makeMulticornPythonPackage test_python test_postgresql)
-            # FIXME: make the python env such that we pass the UNSUPPORTS_SQLALCHEMY check in Makefile... once this
-            # passes should probably be put into devPython as well
-            # ps.sqlalchemy
-            # Blocked by https://github.com/NixOS/nixpkgs/issues/308864
-            # ps.psycopg2
-          ]))
+          (test_python.withPackages (ps:
+            [(makeMulticornPythonPackage test_python test_postgresql)]
+            ++
+            (requiredPythonPackages ps)
+          ))
         ];
         checkPhase = ''
           runHook preCheck
+
+          python -c "import sqlalchemy;import psycopg2"
 
           set +e
           make easycheck
