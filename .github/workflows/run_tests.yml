@@ -14,7 +14,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v26
-      # FIXME: Add a nix binary cache that builds, pushes, and pulles the .#allPostgresWithPlPython target so that this
-      # build doesn't take 15 minutes... but do it in a way that doesn't require secrets to be exposed to the untrusted
-      # pull request workflow because GitHub (wisely) doesn't support that.
+
+      # Binary cache is maintained in update_cache.yml; see comments there for details.
+      - uses: zombiezen/setup-nix-cache-action@v0.4.0
+        with:
+          substituters: s3://mfenniak-multicorn2-nix-cache?region=us-west-2
+          trusted_public_keys: mfenniak-multicorn2-nix-cache:mldk0J26tzkCmqihQKOiyuAm1HAs2CHdIZC0ESr56ZA=
+
+      # Seems to be a bug in setup-nix-cache-action where, even though we're only providing a trusted_public_keys input
+      # and no secret_keys input, it still tries to create a post-build-hook that will push packages to the cache.  This
+      # is a hacky workaround to remove that hook -- we find the post-build-hook created by setup-nix-cache-action and
+      # truncate it to 0 bytes so it does nothing.
+      - run: sudo find /home/runner/work/_temp -type d -name 'setup-nix-cache-action-*' -exec sh -c 'truncate -s 0 "$1"/post-build-hook' _ {} \;
+
+      # Run all the tests.
       - run: nix build .#allTestSuites
