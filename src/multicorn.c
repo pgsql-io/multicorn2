@@ -611,7 +611,11 @@ multicornAddForeignUpdateTargets(
 		returningTle = lfirst(cell);
 		tle = copyObject(returningTle);
 		tle->resjunk = true;
+#if PG_VERSION_NUM >= 140000
+		add_row_identity_var(root, (Var *)tle->expr, rtindex, strdup(tle->resname));
+#else
 		parsetree->targetList = lappend(parsetree->targetList, tle);
+#endif
 	}
 
 

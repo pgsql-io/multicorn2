@@ -2,7 +2,9 @@
 done so far:
    - drop support for Python 3 versions prior to 3.9
    - drop support for Postgres versions prior to 12
+   - PG14: fix DELETE to not passing rowid_column to the FDW (https://github.com/pgsql-io/multicorn2/pull/41)
    - fix bug in error handling on SQL_ASCII databases (https://github.com/pgsql-io/multicorn2/pull/43)
+   - PG14: fix DELETE RETURNING providing NULL values (https://github.com/pgsql-io/multicorn2/pull/47)
 
 to do:
    - confirm support for Python 3.11 & 3.12
