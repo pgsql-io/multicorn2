@@ -26,7 +26,7 @@
       testPostgresVersions = with pkgs; [
         postgresql_12
         postgresql_13
-        # postgresql_14 # tests are currently broken
+        postgresql_14
         # postgresql_15 # tests are currently broken
         # postgresql_16 # tests are currently broken
       ];
