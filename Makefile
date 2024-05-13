@@ -19,7 +19,7 @@ directories.stamp:
 
 $(OBJS): directories.stamp
 
-install: python_code 
+install: python_code
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql directories.stamp
 	cp $< $@
@@ -111,17 +111,17 @@ PYTHON_TEST_VERSION ?= $(python_version)
 PG_TEST_VERSION ?= $(MAJORVERSION)
 UNSUPPORTS_SQLALCHEMY=$(shell python -c "import sqlalchemy;import psycopg2"  1> /dev/null 2>&1; echo $$?)
 
-TESTS        = test-3.6/sql/multicorn_cache_invalidation.sql \
-  test-3.6/sql/multicorn_column_options_test.sql \
-  test-3.6/sql/multicorn_error_test.sql \
-  test-3.6/sql/multicorn_logger_test.sql \
-  test-3.6/sql/multicorn_planner_test.sql \
-  test-3.6/sql/multicorn_regression_test.sql \
-  test-3.6/sql/multicorn_sequence_test.sql \
-  test-3.6/sql/multicorn_test_date.sql \
-  test-3.6/sql/multicorn_test_dict.sql \
-  test-3.6/sql/multicorn_test_list.sql \
-  test-3.6/sql/multicorn_test_sort.sql
+TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_column_options_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_error_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_logger_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_planner_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_regression_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_sequence_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_date.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_dict.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_list.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_sort.sql
 
 ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
   TESTS += test-3/sql/multicorn_alchemy_test.sql
@@ -140,6 +140,10 @@ endif
   endif
 
 REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
-REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION)
+REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION) --encoding=UTF8
 
 $(info Python version is $(python_version))
+
+# This is a copy of the "check" target from pgxs.mk, but it doesn't build the extension, just runs the tests.
+easycheck:
+		$(pg_regress_check) $(REGRESS_OPTS) $(REGRESS)
