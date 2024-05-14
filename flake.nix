@@ -18,8 +18,8 @@
         [ ps.sqlalchemy ] ++ ps.sqlalchemy.optional-dependencies.postgresql
       );
 
-      devPostgresql = pkgs.postgresql_14.overrideAttrs (oldAttrs: {} // pkgs.lib.optionalAttrs debugBuild { dontStrip = true; }); # If debug symbols are needed.
-      devPython = pkgs.python3.withPackages (ps: (requiredPythonPackages ps));
+      devPostgresql = pkgs.postgresql_15.overrideAttrs (oldAttrs: {} // pkgs.lib.optionalAttrs debugBuild { dontStrip = true; }); # If debug symbols are needed.
+      devPython = pkgs.python310.withPackages (ps: (requiredPythonPackages ps));
 
       testPythonVersions = with pkgs; [
         python39
@@ -32,7 +32,7 @@
         postgresql_12
         postgresql_13
         postgresql_14
-        # postgresql_15 # tests are currently broken
+        postgresql_15
         # postgresql_16 # tests are currently broken
       ];
       testVersionCombos = pkgs.lib.cartesianProductOfSets {
