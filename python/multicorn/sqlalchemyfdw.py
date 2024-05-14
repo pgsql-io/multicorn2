@@ -327,7 +327,7 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         return [str(statement)]
 
     def _build_statement(self, quals, columns, sortkeys):
-        statement = select([self.table])
+        statement = select(self.table)
         clauses = []
         for qual in quals:
             operator = OPERATORS.get(qual.operator, None)
@@ -343,7 +343,7 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             columns = [self.table.c[col] for col in columns]
         else:
             columns = self.table.c
-        statement = statement.with_only_columns(columns)
+        statement = statement.with_only_columns(*columns)
         orders = []
         for sortkey in sortkeys:
             column = self.table.c[sortkey.attname]
@@ -365,16 +365,15 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         sortkeys = sortkeys or []
         statement = self._build_statement(quals, columns, sortkeys)
         log_to_postgres(str(statement), DEBUG)
-        rs = (self.connection
-              .execution_options(stream_results=True)
-              .execute(statement))
+        statement.execution_options(stream_results=True)
+        rs = self.connection.execute(statement)
         # Workaround pymssql "trash old results on new query"
         # behaviour (See issue #100)
         if self.engine.driver == 'pymssql' and self.transaction is not None:
             rs = list(rs)
 
         for item in rs:
-            yield dict(item)
+            yield dict(item._mapping)
 
     @property
     def connection(self):
@@ -410,13 +409,13 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         return self._row_id_column
 
     def insert(self, values):
-        self.connection.execute(self.table.insert(values=values))
+        self.connection.execute(self.table.insert().values(**values))
 
     def update(self, rowid, newvalues):
         self.connection.execute(
             self.table.update()
             .where(self.table.c[self._row_id_column] == rowid)
-            .values(newvalues))
+            .values(**newvalues))
 
     def delete(self, rowid):
         self.connection.execute(

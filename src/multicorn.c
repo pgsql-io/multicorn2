@@ -11,9 +11,6 @@
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
 #include "optimizer/clauses.h"
-#if PG_VERSION_NUM < 120000
-#include "optimizer/var.h"
-#endif
 #if PG_VERSION_NUM >= 140000
 #include "optimizer/appendinfo.h"
 #endif
@@ -622,12 +619,44 @@ multicornAddForeignUpdateTargets(
 	Query *parsetree = root->parse;
 #endif
 
+#if PG_VERSION_NUM >= 140000
+	if (root->parse->commandType == CMD_UPDATE)
+	{
+		// In order to maintain backward compatibility with behavior prior to PG14, during an UPDATE we ensure that we
+		// fetch all columns from the table to provide them to the `update()` method.  This could be made more efficient
+		// in the future if multicornExecForeignUpdate() was modified to call `update()` with only the columns that have
+		// been changed, but it might be a compatibility problem for existing FDWs.
+
+		for (i = 0; i < desc->natts; i++)
+		{
+			Form_pg_attribute att = TupleDescAttr(desc, i);
+
+			if (!att->attisdropped)
+			{
+				var = makeVar(rtindex,
+							att->attnum,
+							att->atttypid,
+							att->atttypmod,
+							att->attcollation,
+							0);
+				add_row_identity_var(root, var, rtindex, strdup(NameStr(att->attname)));
+			}
+		}
+
+		return;
+	}
+#endif
+
 	foreach(cell, parsetree->returningList)
 	{
 		returningTle = lfirst(cell);
 		tle = copyObject(returningTle);
 		tle->resjunk = true;
+#if PG_VERSION_NUM >= 140000
+		add_row_identity_var(root, (Var *)tle->expr, rtindex, strdup(tle->resname));
+#else
 		parsetree->targetList = lappend(parsetree->targetList, tle);
+#endif
 	}
 
 

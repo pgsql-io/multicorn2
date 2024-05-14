@@ -2,7 +2,7 @@
 Multicorn2
 ==========
 
-Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested on Linux w/ Python 3.6+ & Postgres 12 thru 16.  Support for Postgres 14+ is known to have some issues with predicate pushdown and updating.
+Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested on Linux w/ Python 3.9-3.10 & Postgres 12-15.
 
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
 
@@ -25,17 +25,17 @@ Multicorn also includes, under the covers, **two** shared libraries:
 - `_utils.so` is a CPython extension which provides support for
   the previously mentioned `utils.py`.
 
-## Using in OSCG.IO
+## Using in PGEDGE (see https://github.com/pgedge/pgedge)
 
-1.) Install OSCG.IO from the command line, in your home directory, with the curl command at the top of https://oscg.io/usage.html
+1.) Install pgEdge from the command line, in your home directory, with the curl command at the top of pgedge/pgedge
 
-2.) Change into the oscg directory and install pgXX
+2.) Change into the pgedge directory and install pgXX
 ```bash
-cd oscg
-./io install pg13 --start
-./io install multicorn2
+cd pgedge
+./pgedge install pg16 --start
+./pgedge install multicorn2
 ```
-      
+
 3.) Use multicorn as you normally would AND you can install popular FDW's that use multicorn such as ElasticSerachFDW & BigQueryFDW
 ```bash
       ./io install esfdw
@@ -91,7 +91,7 @@ make
 sudo make install
 ```
 
-### Create Multicorn2 Extension 
+### Create Multicorn2 Extension
 In your running instance of Postgres from the PSQL command line
 ```sql
 CREATE EXTENSION multicorn;
@@ -126,8 +126,39 @@ sudo make install
 
 Note that the last step installs both the extension into Postgres and also the Python part. The latter is done using "pip install", and so can be undone using "pip uninstall".
 
-### Create Multicorn2 Extension 
+### Create Multicorn2 Extension
 In your running instance of Postgres from the PSQL command line
 ```sql
 CREATE EXTENSION multicorn;
 ```
+
+## Integration tests
+
+multicorn2 has an extensive suite of integration tests which run against live PostgreSQL servers.  In order to manage the matrix of supported versions of Python and PostgreSQL, the Nix package manager can be used to provide all the dependencies and run all the tests.  The Nix package manager is supported on Linux, MacOS, and Windows Subsystem for Linux.  To install Nix, follow the instructions at https://nixos.org/download/.
+
+Once Nix is installed, you can run the tests with the following commands.  To run a complete regression test against all supported versions of Python and PostgreSQL, run:
+
+```bash
+nix build .#allTestSuites
+```
+
+This can be slow to run when it is first executed (15-30 minutes) due to the need to rebuild PostgreSQL with specific versions of Python, to support the plpython extension which is used in some tests.  Subsequent runs will be faster (under 5 minutes) as the build artifacts are cached.
+
+To run a faster test suite against a specific version of Python and PostgreSQL, run:
+
+```bash
+nix build .#testSuites.test_pg12_py39
+```
+
+**Known issues:**
+- The tests for Python 3.11 and later, and PostgreSQL 16 and later, are currently disabled due to known issues.
+
+### Adding new Python or PostgreSQL versions to the test suite
+
+1. Perform a `nix flake update` in order to provide access to the latest packages available from the Nix package manager.
+
+2. Update the supported list of versions in flake.nix under the variable `testPythonVersions` or `testPostgresVersions`.
+
+3. For new Python versions, create a new symlink to test-3.6 with the version number of the new Python version; and update the list of test directories in `makeTestSuite` in flake.nix.
+
+4. Run the tests with `nix build .#allTestSuites` to ensure that the new versions are supported.

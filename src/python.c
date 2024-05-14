@@ -98,6 +98,8 @@ void appendBinaryStringInfoQuote(StringInfo buffer,
 
 static void begin_remote_xact(CacheEntry * entry);
 
+static char* ascii_encoding_name = "ascii";
+
 /*
  * Get a (python) encoding name for an attribute.
  */
@@ -108,7 +110,7 @@ getPythonEncodingName()
 
 	if (strcmp(encoding_name, "SQL_ASCII") == 0)
 	{
-		encoding_name = "ascii";
+		encoding_name = ascii_encoding_name;
 	}
 	return encoding_name;
 }
@@ -169,7 +171,7 @@ char *
 PyString_AsString(PyObject *unicode)
 {
 	char	   *rv;
-	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(), NULL);
+	PyObject   *o = PyUnicode_AsEncodedString(unicode, getPythonEncodingName(), NULL);
 	errorCheck();
 	rv = pstrdup(PyBytes_AsString(o));
 	Py_XDECREF(o);
@@ -185,7 +187,7 @@ PyString_AsStringAndSize(PyObject *obj, char **buffer, Py_ssize_t *length)
 
 	if (PyUnicode_Check(obj))
 	{
-		o = PyUnicode_AsEncodedString(obj, GetDatabaseEncodingName(), NULL);
+		o = PyUnicode_AsEncodedString(obj, getPythonEncodingName(), NULL);
 		errorCheck();
 		rv = PyBytes_AsStringAndSize(o, &tempbuffer, length);
 		*buffer = pstrdup(tempbuffer);
