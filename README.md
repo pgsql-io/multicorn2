@@ -2,7 +2,7 @@
 Multicorn2
 ==========
 
-Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested on Linux w/ Python 3.9++ & Postgres 12++.  Support for Postgres 14+ is known to have some issues with predicate pushdown and updating. (lets get these fixed)
+Multicorn Python3 Wrapper for Postgresql Foreign Data Wrapper.  Tested on Linux w/ Python 3.9-3.10 & Postgres 12-15.
 
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
 
@@ -151,8 +151,7 @@ nix build .#testSuites.test_pg12_py39
 ```
 
 **Known issues:**
-- The tests for Python 3.11 and later, and PostgreSQL 14 and later, are currently disabled due to known issues.
-- SQLAlchemy based tests are currently not included in this test suite.
+- The tests for Python 3.11 and later, and PostgreSQL 16 and later, are currently disabled due to known issues.
 
 ### Adding new Python or PostgreSQL versions to the test suite
 
