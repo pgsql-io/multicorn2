@@ -370,8 +370,15 @@ class ForeignDataWrapper(object):
         Returns:
             A list of dictionaries containing the new values. These values can
             differ from the ``values`` argument if any one of them was changed
-            or inserted by the foreign side. For example, if a key is auto
+            or inserted by the foreign side -- For example, if a key is auto
             generated.
+
+            Note that in PG14-PG16, the return value is only used if the INSERT
+            statement involves a view WITH CHECK OPTIONS, or if the foreign
+            table has an AFTER ROW trigger; notably it is not used a RETURNING
+            clause is present in the INSERT statement.  If the FDW wants to
+            support RETURNING on inserts, it must set modify_batch_size to 1
+            and avoid using the bulk insert api.
         """
         raise NotImplementedError("This FDW does not support the bulk insert writable API")
 

@@ -23,36 +23,26 @@ NOTICE:  [('fname1', 'character varying'), ('fname2', 'character varying')]
 NOTICE:  BULK INSERTING: [[('fname1', 'col1_val1'), ('fname2', 'col2_val')], [('fname1', 'col1_val2'), ('fname2', 'col2_val')]]
 NOTICE:  BULK INSERTING: [[('fname1', 'col1_val3'), ('fname2', 'col2_val')], [('fname1', 'col1_val4'), ('fname2', 'col2_val')]]
 NOTICE:  BULK INSERTING: [[('fname1', 'col1_val5'), ('fname2', 'col2_val')]]
-DROP foreign table testmulticorn_write;
-CREATE foreign table testmulticorn_write(
-    fname1 character varying,
-    fname2 character varying
-) server multicorn_srv options (
-    option1 'option1',
-    row_id_column 'test1',
-    test_type 'returning',
-    modify_batch_size '2'
-);
-insert into testmulticorn_write (fname1, fname2)
+CREATE OR REPLACE FUNCTION notify_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Inserted Record: %, %', NEW.fname1, NEW.fname2;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER after_insert_trigger
+AFTER INSERT ON testmulticorn_write
+FOR EACH ROW
+EXECUTE FUNCTION notify_insert();
+INSERT INTO testmulticorn_write(fname1, fname2)
 VALUES
-('col1_val1', 'col2_val'),
-('col1_val2', 'col2_val'),
-('col1_val3', 'col2_val'),
-('col1_val4', 'col2_val'),
-('col1_val5', 'col2_val')
-RETURNING fname1, fname2;
-NOTICE:  [('modify_batch_size', '2'), ('option1', 'option1'), ('row_id_column', 'test1'), ('test_type', 'returning'), ('usermapping', 'test')]
-NOTICE:  [('fname1', 'character varying'), ('fname2', 'character varying')]
-NOTICE:  BULK INSERTING: [[('fname1', 'col1_val1'), ('fname2', 'col2_val')], [('fname1', 'col1_val2'), ('fname2', 'col2_val')]]
-NOTICE:  INSERT RETURNING: [{'fname1': 'INSERTED: col1_val1', 'fname2': 'INSERTED: col2_val'}, {'fname1': 'INSERTED: col1_val2', 'fname2': 'INSERTED: col2_val'}]
-NOTICE:  BULK INSERTING: [[('fname1', 'col1_val3'), ('fname2', 'col2_val')], [('fname1', 'col1_val4'), ('fname2', 'col2_val')]]
-NOTICE:  INSERT RETURNING: [{'fname1': 'INSERTED: col1_val3', 'fname2': 'INSERTED: col2_val'}, {'fname1': 'INSERTED: col1_val4', 'fname2': 'INSERTED: col2_val'}]
-NOTICE:  BULK INSERTING: [[('fname1', 'col1_val5'), ('fname2', 'col2_val')]]
-NOTICE:  INSERT RETURNING: [{'fname1': 'INSERTED: col1_val5', 'fname2': 'INSERTED: col2_val'}]
- fname1 | fname2 
---------+--------
-(5 rows)
-
+('col1_val6', 'col2_val'),
+('col1_val7', 'col2_val');
+NOTICE:  BULK INSERTING: [[('fname1', 'col1_val6'), ('fname2', 'col2_val')], [('fname1', 'col1_val7'), ('fname2', 'col2_val')]]
+NOTICE:  Inserted Record: col1_val6, col2_val
+NOTICE:  Inserted Record: col1_val7, col2_val
+DROP TRIGGER after_insert_trigger ON testmulticorn_write;
+DROP FUNCTION notify_insert();
 DROP USER MAPPING FOR current_user SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 2 other objects
