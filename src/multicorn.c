@@ -97,13 +97,14 @@ static TupleTableSlot *multicornExecForeignUpdate(EState *estate, ResultRelInfo 
 						   TupleTableSlot *slot, TupleTableSlot *planSlot);
 static void multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo);
 
-
+#if PG_VERSION_NUM >= 140000
 static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
 							ResultRelInfo *rinfo,
 							TupleTableSlot **slots,
 							TupleTableSlot **planSlots,
 							int *numSlots);
 static int multicornGetForeignModifyBatchSize(ResultRelInfo *rinfo);
+#endif
 
 static void multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 						   SubTransactionId parentSubid, void *arg);
@@ -837,6 +838,7 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	return slot;
 }
 
+#if PG_VERSION_NUM >= 140000
 static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
                                                         ResultRelInfo *rinfo,
                                                         TupleTableSlot **slots,
@@ -890,13 +892,11 @@ static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
 static int multicornGetForeignModifyBatchSize(ResultRelInfo *rinfo)
 {
 	MulticornModifyState *modstate = rinfo->ri_FdwState;
-	PyObject   *fdw_instance = modstate->fdw_instance;
-
+	PyObject *fdw_instance = modstate->fdw_instance;
 	int batch_size = getModifyBatchSize(fdw_instance);
-	Py_DECREF(fdw_instance);
-
 	return batch_size;
 }
+#endif
 
 /*
  * multicornExecForeignUpdate
