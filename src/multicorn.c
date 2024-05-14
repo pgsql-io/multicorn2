@@ -839,6 +839,7 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 }
 
 #if PG_VERSION_NUM >= 140000
+
 static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
                                                         ResultRelInfo *rinfo,
                                                         TupleTableSlot **slots,
@@ -854,39 +855,42 @@ static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
     // Convert all TupleTableSlots to Python objects and append to list
     for (i = 0; i < *numSlots; i++) {
         PyObject *values = tupleTableSlotToPyObject(slots[i], modstate->cinfos);
+		errorCheck();
         if (values == NULL) {
-            PyErr_Print();
             Py_DECREF(py_slots_list);
             return slots;  // Early exit on conversion failure
         }
         PyList_Append(py_slots_list, values);
+		errorCheck();
         Py_DECREF(values);  // Decrement refcount after adding to list
     }
 
-    // Call the bulk_insert method with the list of slot values
     p_return_values = PyObject_CallMethod(fdw_instance, "bulk_insert", "(O)", py_slots_list);
-    errorCheck();  // Assuming errorCheck is a function to handle Python errors
+    errorCheck();
 
     // Process returned values if any
     if (p_return_values && p_return_values != Py_None) {
         if (PyList_Check(p_return_values) && PyList_Size(p_return_values) == *numSlots) {
             for (i = 0; i < *numSlots; i++) {
                 PyObject *p_new_value = PyList_GetItem(p_return_values, i);  // Borrowed reference, no need to DECREF
+				errorCheck();
+
                 ExecClearTuple(slots[i]);
                 pythonResultToTuple(p_new_value, slots[i], modstate->cinfos, modstate->buffer);
+				errorCheck();
+
                 ExecStoreVirtualTuple(slots[i]);
             }
         } else {
             // Error: return values do not match the number of slots provided
-            fprintf(stderr, "Error: Returned list size does not match number of slots.\n");
-        }
+			ereport(ERROR, (errmsg("%s", "Returned list size does not match number of inserted values")));
+		}
     }
 
     Py_XDECREF(p_return_values);
     Py_DECREF(py_slots_list);
-    errorCheck();  // Check for any additional Python errors
 
-    return slots;  // Return the modified slots
+    return slots;
 }
 
 static int multicornGetForeignModifyBatchSize(ResultRelInfo *rinfo)
@@ -896,6 +900,7 @@ static int multicornGetForeignModifyBatchSize(ResultRelInfo *rinfo)
 	int batch_size = getModifyBatchSize(fdw_instance);
 	return batch_size;
 }
+
 #endif
 
 /*

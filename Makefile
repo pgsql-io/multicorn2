@@ -121,28 +121,28 @@ TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql 
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_date.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_dict.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_list.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_sort.sql
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_sort.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/write_filesystem.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/write_savepoints.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/write_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/import_test.sql
 
 ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
-  TESTS += test-$(PYTHON_TEST_VERSION)/sql/multicorn_alchemy_test.sql
+  TESTS += test-$(PYTHON_TEST_VERSION)/sql/multicorn_alchemy_test.sql \
+  	test-$(PYTHON_TEST_VERSION)/sql/write_sqlalchemy.sql \
+  	test-$(PYTHON_TEST_VERSION)/sql/import_sqlalchemy.sql
 endif
 
-  TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_filesystem.sql \
-	test-$(PYTHON_TEST_VERSION)/sql/write_savepoints.sql \
-	test-$(PYTHON_TEST_VERSION)/sql/write_test.sql
-  ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
-	TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_sqlalchemy.sql
-  endif
-
-  TESTS += test-$(PYTHON_TEST_VERSION)/sql/import_test.sql
-  ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
-	TESTS += test-$(PYTHON_TEST_VERSION)/sql/import_sqlalchemy.sql
-  endif
+# Add tests for features only supported in PG14+
+ifeq ($(shell test $(PG_TEST_VERSION) -ge 14; echo $$?),0)
+  TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_batch_test.sql
+endif
 
 REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION) --encoding=UTF8 --host=localhost
 
 $(info Python version is $(python_version))
+$(info MAJORVERSION version is $(PG_TEST_VERSION))
 
 # This is a copy of the "check" target from pgxs.mk, but it doesn't build the extension, just runs the tests.
 easycheck:

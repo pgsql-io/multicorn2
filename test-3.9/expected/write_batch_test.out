@@ -1,0 +1,60 @@
+CREATE EXTENSION multicorn;
+CREATE server multicorn_srv foreign data wrapper multicorn options (
+    wrapper 'multicorn.testfdw.TestForeignDataWrapper'
+);
+CREATE user mapping FOR current_user server multicorn_srv options (usermapping 'test');
+CREATE foreign table testmulticorn_write(
+    fname1 character varying,
+    fname2 character varying
+) server multicorn_srv options (
+    option1 'option1',
+    row_id_column 'test1',
+    modify_batch_size '2'
+);
+insert into testmulticorn_write(fname1, fname2)
+VALUES
+('col1_val1', 'col2_val'),
+('col1_val2', 'col2_val'),
+('col1_val3', 'col2_val'),
+('col1_val4', 'col2_val'),
+('col1_val5', 'col2_val');
+NOTICE:  [('modify_batch_size', '2'), ('option1', 'option1'), ('row_id_column', 'test1'), ('usermapping', 'test')]
+NOTICE:  [('fname1', 'character varying'), ('fname2', 'character varying')]
+NOTICE:  BULK INSERTING: [[('fname1', 'col1_val1'), ('fname2', 'col2_val')], [('fname1', 'col1_val2'), ('fname2', 'col2_val')]]
+NOTICE:  BULK INSERTING: [[('fname1', 'col1_val3'), ('fname2', 'col2_val')], [('fname1', 'col1_val4'), ('fname2', 'col2_val')]]
+NOTICE:  BULK INSERTING: [[('fname1', 'col1_val5'), ('fname2', 'col2_val')]]
+DROP foreign table testmulticorn_write;
+CREATE foreign table testmulticorn_write(
+    fname1 character varying,
+    fname2 character varying
+) server multicorn_srv options (
+    option1 'option1',
+    row_id_column 'test1',
+    test_type 'returning',
+    modify_batch_size '2'
+);
+insert into testmulticorn_write (fname1, fname2)
+VALUES
+('col1_val1', 'col2_val'),
+('col1_val2', 'col2_val'),
+('col1_val3', 'col2_val'),
+('col1_val4', 'col2_val'),
+('col1_val5', 'col2_val')
+RETURNING fname1, fname2;
+NOTICE:  [('modify_batch_size', '2'), ('option1', 'option1'), ('row_id_column', 'test1'), ('test_type', 'returning'), ('usermapping', 'test')]
+NOTICE:  [('fname1', 'character varying'), ('fname2', 'character varying')]
+NOTICE:  BULK INSERTING: [[('fname1', 'col1_val1'), ('fname2', 'col2_val')], [('fname1', 'col1_val2'), ('fname2', 'col2_val')]]
+NOTICE:  INSERT RETURNING: [{'fname1': 'INSERTED: col1_val1', 'fname2': 'INSERTED: col2_val'}, {'fname1': 'INSERTED: col1_val2', 'fname2': 'INSERTED: col2_val'}]
+NOTICE:  BULK INSERTING: [[('fname1', 'col1_val3'), ('fname2', 'col2_val')], [('fname1', 'col1_val4'), ('fname2', 'col2_val')]]
+NOTICE:  INSERT RETURNING: [{'fname1': 'INSERTED: col1_val3', 'fname2': 'INSERTED: col2_val'}, {'fname1': 'INSERTED: col1_val4', 'fname2': 'INSERTED: col2_val'}]
+NOTICE:  BULK INSERTING: [[('fname1', 'col1_val5'), ('fname2', 'col2_val')]]
+NOTICE:  INSERT RETURNING: [{'fname1': 'INSERTED: col1_val5', 'fname2': 'INSERTED: col2_val'}]
+ fname1 | fname2 
+--------+--------
+(5 rows)
+
+DROP USER MAPPING FOR current_user SERVER multicorn_srv;
+DROP EXTENSION multicorn cascade;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to server multicorn_srv
+drop cascades to foreign table testmulticorn_write

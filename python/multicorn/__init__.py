@@ -359,6 +359,22 @@ class ForeignDataWrapper(object):
         """
         raise NotImplementedError("This FDW does not support the writable API")
 
+    def bulk_insert(self, all_values):
+        """
+        Insert multiple tuples defined by ''values'' in the foreign table.
+        Will only be invoked if modify_batch_size is a value greater than 1.
+
+        Args:
+            all_values (list of dicts): a dictionary mapping column names to
+                column values
+        Returns:
+            A list of dictionaries containing the new values. These values can
+            differ from the ``values`` argument if any one of them was changed
+            or inserted by the foreign side. For example, if a key is auto
+            generated.
+        """
+        raise NotImplementedError("This FDW does not support the bulk insert writable API")
+
     def update(self, oldvalues, newvalues):
         """
         Update a tuple containing ''oldvalues'' to the ''newvalues''.
