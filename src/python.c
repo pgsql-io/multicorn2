@@ -1720,3 +1720,25 @@ getRowIdColumn(PyObject *fdw_instance)
 	Py_DECREF(value);
 	return result;
 }
+
+/*
+ * Get modify batch size
+ */
+int getModifyBatchSize(PyObject *fdw_instance)
+{
+	PyObject   *value = PyObject_GetAttrString(fdw_instance, "modify_batch_size");
+	int			result;
+
+	errorCheck();
+	if (value == Py_None)
+	{
+		Py_DECREF(value);
+		return 1; // Default to disabling batch modifications for backwards compatibility
+	}
+
+	result = PyLong_AsLong(value);
+	errorCheck();
+	Py_DECREF(value);
+
+	return result;
+}

@@ -97,6 +97,15 @@ static TupleTableSlot *multicornExecForeignUpdate(EState *estate, ResultRelInfo 
 						   TupleTableSlot *slot, TupleTableSlot *planSlot);
 static void multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo);
 
+#if PG_VERSION_NUM >= 140000
+static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
+							ResultRelInfo *rinfo,
+							TupleTableSlot **slots,
+							TupleTableSlot **planSlots,
+							int *numSlots);
+static int multicornGetForeignModifyBatchSize(ResultRelInfo *rinfo);
+#endif
+
 static void multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 						   SubTransactionId parentSubid, void *arg);
 
@@ -181,6 +190,11 @@ multicorn_handler(PG_FUNCTION_ARGS)
 	fdw_routine->ExecForeignDelete = multicornExecForeignDelete;
 	fdw_routine->ExecForeignUpdate = multicornExecForeignUpdate;
 	fdw_routine->EndForeignModify = multicornEndForeignModify;
+
+#if PG_VERSION_NUM >= 140000
+	fdw_routine->GetForeignModifyBatchSize = multicornGetForeignModifyBatchSize;
+	fdw_routine->ExecForeignBatchInsert = multicornExecForeignBatchInsert;
+#endif
 
 	fdw_routine->ImportForeignSchema = multicornImportForeignSchema;
 
@@ -823,6 +837,71 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	errorCheck();
 	return slot;
 }
+
+#if PG_VERSION_NUM >= 140000
+
+static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
+                                                        ResultRelInfo *rinfo,
+                                                        TupleTableSlot **slots,
+                                                        TupleTableSlot **planSlots,
+                                                        int *numSlots)
+{
+    MulticornModifyState *modstate = rinfo->ri_FdwState;
+    PyObject *fdw_instance = modstate->fdw_instance;
+    PyObject *py_slots_list = PyList_New(0);  // Create a new list for all slot values
+    PyObject *p_return_values;
+    int i;
+
+    // Convert all TupleTableSlots to Python objects and append to list
+    for (i = 0; i < *numSlots; i++) {
+        PyObject *values = tupleTableSlotToPyObject(slots[i], modstate->cinfos);
+		errorCheck();
+        if (values == NULL) {
+            Py_DECREF(py_slots_list);
+            return slots;  // Early exit on conversion failure
+        }
+        PyList_Append(py_slots_list, values);
+		errorCheck();
+        Py_DECREF(values);  // Decrement refcount after adding to list
+    }
+
+    p_return_values = PyObject_CallMethod(fdw_instance, "bulk_insert", "(O)", py_slots_list);
+    errorCheck();
+
+    // Process returned values if any
+    if (p_return_values && p_return_values != Py_None) {
+        if (PyList_Check(p_return_values) && PyList_Size(p_return_values) == *numSlots) {
+            for (i = 0; i < *numSlots; i++) {
+                PyObject *p_new_value = PyList_GetItem(p_return_values, i);  // Borrowed reference, no need to DECREF
+				errorCheck();
+
+                ExecClearTuple(slots[i]);
+                pythonResultToTuple(p_new_value, slots[i], modstate->cinfos, modstate->buffer);
+				errorCheck();
+
+                ExecStoreVirtualTuple(slots[i]);
+            }
+        } else {
+            // Error: return values do not match the number of slots provided
+			ereport(ERROR, (errmsg("%s", "Returned list size does not match number of inserted values")));
+		}
+    }
+
+    Py_XDECREF(p_return_values);
+    Py_DECREF(py_slots_list);
+
+    return slots;
+}
+
+static int multicornGetForeignModifyBatchSize(ResultRelInfo *rinfo)
+{
+	MulticornModifyState *modstate = rinfo->ri_FdwState;
+	PyObject *fdw_instance = modstate->fdw_instance;
+	int batch_size = getModifyBatchSize(fdw_instance);
+	return batch_size;
+}
+
+#endif
 
 /*
  * multicornExecForeignUpdate

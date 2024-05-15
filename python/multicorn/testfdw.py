@@ -17,6 +17,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         self.test_type = options.get('test_type', None)
         self.test_subtype = options.get('test_subtype', None)
         self.tx_hook = options.get('tx_hook', False)
+        self._modify_batch_size = int(options.get('modify_batch_size', 1))
         self._row_id_column = options.get('row_id_column',
                                           list(self.columns.keys())[0])
         log_to_postgres(str(sorted(options.items())))
@@ -142,9 +143,24 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                 values[key] = "INSERTED: %s" % values.get(key, None)
             return values
 
+    def bulk_insert(self, all_values):
+        if self.test_type == 'nowrite':
+            super(TestForeignDataWrapper, self).insert(all_values)
+        log_to_postgres("BULK INSERTING: %s" % [sorted(values.items()) for values in all_values])
+        if self.test_type == 'returning':
+            for value in all_values:
+                for key in self.columns:
+                    value[key] = "INSERTED: %s" % value.get(key, None)
+            log_to_postgres("INSERT RETURNING: %r" % all_values)
+            return all_values
+
     @property
     def rowid_column(self):
         return self._row_id_column
+
+    @property
+    def modify_batch_size(self):
+        return self._modify_batch_size
 
     def begin(self, serializable):
         if self.tx_hook:
