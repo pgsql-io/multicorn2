@@ -361,8 +361,8 @@ class ForeignDataWrapper(object):
 
     def bulk_insert(self, all_values):
         """
-        Insert multiple tuples defined by ''values'' in the foreign table.
-        Will only be invoked if modify_batch_size is a value greater than 1.
+        Insert multiple tuples defined by ''values'' in the foreign table. Will
+        only be invoked if modify_batch_size is a value greater than 1.
 
         Args:
             all_values (list of dicts): a dictionary mapping column names to
@@ -373,12 +373,15 @@ class ForeignDataWrapper(object):
             or inserted by the foreign side -- For example, if a key is auto
             generated.
 
-            Note that in PG14-PG16, the return value is only used if the INSERT
-            statement involves a view WITH CHECK OPTIONS, or if the foreign
-            table has an AFTER ROW trigger; notably it is not used a RETURNING
-            clause is present in the INSERT statement.  If the FDW wants to
-            support RETURNING on inserts, it must set modify_batch_size to 1
-            and avoid using the bulk insert api.
+            Bulk insert requires PostgreSQL 14 or later.
+
+            Note that, for PostgreSQL 14 and later (at least until PostgreSQL
+            16), the return value is only used if the INSERT statement involves
+            a view WITH CHECK OPTIONS, or if the foreign table has an AFTER ROW
+            trigger; notably it is not used a RETURNING clause is present in the
+            INSERT statement.  If the FDW wants to support RETURNING on inserts,
+            it must set modify_batch_size to 1 and avoid using the bulk insert
+            api.
         """
         raise NotImplementedError("This FDW does not support the bulk insert writable API")
 
