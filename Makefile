@@ -142,7 +142,6 @@ REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION) --encoding=UTF8 --host=localhost
 
 $(info Python version is $(python_version))
-$(info MAJORVERSION version is $(PG_TEST_VERSION))
 
 # This is a copy of the "check" target from pgxs.mk, but it doesn't build the extension, just runs the tests.
 easycheck:
