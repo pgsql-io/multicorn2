@@ -18,7 +18,7 @@ void reportException(PyObject *pErrType,
 				PyObject *pErrTraceback);
 
 
-void
+PGDLLEXPORT void
 errorCheck()
 {
 	PyObject   *pErrType,
