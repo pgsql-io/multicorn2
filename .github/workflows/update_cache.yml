@@ -68,3 +68,7 @@ jobs:
       # setup-nix-cache-action will automatically copy the build result to the first substituter, so no need for a nix
       # copy after the build.
       - run: nix build .#allPostgresWithPlPython
+      # Might as well build the test suites too and cache them -- while they're fast and not typically cacheable in a
+      # meaningful way, they do rely on Python versions with packages (like SQLAlchemy) that will be effectively cached
+      # by this.
+      - run: nix build .#allTestSuites
