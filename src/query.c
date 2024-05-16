@@ -668,7 +668,7 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 				}
 
 				ojcinfo = (OuterJoinClauseInfo *) node;
-				node = (RestrictInfo *) ojcinfo->rinfo;
+				node = (Node *) ojcinfo->rinfo;
 #endif
 
 				if (nodeTag(node) != T_RestrictInfo)

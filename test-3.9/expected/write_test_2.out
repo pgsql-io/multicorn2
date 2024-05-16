@@ -15,9 +15,9 @@ insert into testmulticorn(test1, test2) VALUES ('test', 'test2');
 NOTICE:  [('option1', 'option1'), ('test_type', 'nowrite'), ('tx_hook', 'true'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
 NOTICE:  BEGIN
-NOTICE:  ROLLBACK
 ERROR:  Error in python: NotImplementedError
 DETAIL:  This FDW does not support the writable API
+NOTICE:  ROLLBACK
 update testmulticorn set test1 = 'test';
 NOTICE:  BEGIN
 NOTICE:  []
@@ -29,9 +29,9 @@ delete from testmulticorn where test2 = 'test2 2 0';
 NOTICE:  BEGIN
 NOTICE:  [test2 = test2 2 0]
 NOTICE:  ['test1', 'test2']
+NOTICE:  ROLLBACK
 ERROR:  Error in python: NotImplementedError
 DETAIL:  This FDW does not support the writable API
-NOTICE:  ROLLBACK
 CREATE foreign table testmulticorn_write (
     test1 character varying,
     test2 character varying
