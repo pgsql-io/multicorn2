@@ -9,6 +9,7 @@ done so far:
    - Update SQLAlchemy FDW to be tested against SQLAlchemy 2.0; earlier versions not supported but may work (https://github.com/pgsql-io/multicorn2/pull/49)
    - PG15: now supported with full regression test passes; note that PG15 will run FDW rollback handlers at slightly different times during error handling (https://github.com/pgsql-io/multicorn2/pull/50)
    - Add support for bulk_insert FDWs on PG14+ (https://github.com/pgsql-io/multicorn2/pull/45)
+   - PG16: Fix compatibility issues w/ log_to_postgres and join query planning in PostgreSQL 16 (https://github.com/pgsql-io/multicorn2/pull/51)
 
 to do:
    - confirm support for Python 3.11 & 3.12

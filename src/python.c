@@ -115,7 +115,7 @@ getPythonEncodingName()
 	return encoding_name;
 }
 
-char *
+PGDLLEXPORT char *
 PyUnicode_AsPgString(PyObject *p_unicode)
 {
 	char	   *message = NULL;
@@ -167,7 +167,7 @@ PyString_FromString(const char *s)
 	return PyString_FromStringAndSize(s, -1);
 }
 
-char *
+PGDLLEXPORT char *
 PyString_AsString(PyObject *unicode)
 {
 	char	   *rv;

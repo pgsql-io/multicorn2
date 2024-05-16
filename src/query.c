@@ -655,14 +655,34 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 			foreach(lc1, list_union(root->left_join_clauses,
 								   root->right_join_clauses))
 			{
-				RestrictInfo *ri = (RestrictInfo *) lfirst(lc1);
+				Node *node = (Node *) lfirst(lc1);
+				RestrictInfo *ri;
+
+#if PG_VERSION_NUM >= 160000
+				OuterJoinClauseInfo *ojcinfo;
+
+				if (nodeTag(node) != T_OuterJoinClauseInfo)
+				{
+					elog(ERROR, "join clause was not a T_OuterJoinClauseInfo; but was a %d", nodeTag(node));
+					continue;
+				}
+
+				ojcinfo = (OuterJoinClauseInfo *) node;
+				node = (RestrictInfo *) ojcinfo->rinfo;
+#endif
+
+				if (nodeTag(node) != T_RestrictInfo)
+				{
+					elog(ERROR, "join clause was not a T_RestrictInfo; but was a %d", nodeTag(node));
+					continue;
+				}
+				ri = (RestrictInfo *) node;
 
 				if (isAttrInRestrictInfo(baserel->relid, attnum, ri))
 				{
 					clauses = lappend(clauses, ri);
 					outer_relids = bms_union(outer_relids,
 											 ri->outer_relids);
-
 				}
 			}
 			/* We did NOT find anything for this key, bail out */
