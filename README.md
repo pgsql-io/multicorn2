@@ -151,7 +151,7 @@ nix build .#testSuites.test_pg12_py39
 ```
 
 **Known issues:**
-- The tests for Python 3.11 and later, and PostgreSQL 16 and later, are currently disabled due to known issues.
+- The tests cover only the supported range of Python & PostgreSQL combinations; in particular, Python releases 3.11 and later are disabled due to failures that have not been addressed.
 
 ### Adding new Python or PostgreSQL versions to the test suite
 
