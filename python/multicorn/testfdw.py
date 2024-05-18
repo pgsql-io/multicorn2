@@ -20,6 +20,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         self._modify_batch_size = int(options.get('modify_batch_size', 1))
         self._row_id_column = options.get('row_id_column',
                                           list(self.columns.keys())[0])
+        self.noisy_explain = options.get('noisy_explain', 'False').lower() == 'true'
         log_to_postgres(str(sorted(options.items())))
         log_to_postgres(str(sorted([(key, column.type_name) for key, column in
                                     columns.items()])))
@@ -104,6 +105,15 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                     return sorted(res, key=itemgetter(k.attname),
                                   reverse=k.is_reversed)
             return self._as_generator(quals, columns)
+
+    def explain(self, quals, columns, sortkeys=None, verbose=False):
+        if self.noisy_explain:
+            log_to_postgres("EXPLAIN quals=%r" % (sorted(quals),))
+            log_to_postgres("EXPLAIN columns=%r" % (sorted(columns),))
+            log_to_postgres("EXPLAIN sortkeys=%r" % (sortkeys,))
+            log_to_postgres("EXPLAIN verbose=%r" % (verbose,))
+            return ['EXPLAIN ROW 1', 'EXPLAIN ROW 2']
+        return []
 
     def get_rel_size(self, quals, columns):
         if self.test_type == 'planner':
