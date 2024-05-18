@@ -948,11 +948,17 @@ execute(ForeignScanState *node, ExplainState *es)
 				newqual->base.isArray = qual->isArray;
 				newqual->base.useOr = qual->useOr;
 
-				#if PG_VERSION_NUM >= 100000
-				newqual->value = ExecEvalExpr(expr_state, econtext, &isNull);
-				#else
-				newqual->value = ExecEvalExpr(expr_state, econtext, &isNull, NULL);
-				#endif
+				// Don't attempt to evaluate the expression if we're running an EXPLAIN
+				if (es == NULL)
+				{
+					expr_state = ExecInitExpr(((MulticornParamQual *) qual)->expr,
+											(PlanState *) node);
+					#if PG_VERSION_NUM >= 100000
+					newqual->value = ExecEvalExpr(expr_state, econtext, &isNull);
+					#else
+					newqual->value = ExecEvalExpr(expr_state, econtext, &isNull, NULL);
+					#endif
+				}
 				newqual->base.typeoid = ((Param*) ((MulticornParamQual *) qual)->expr)->paramtype;
 				newqual->isnull = isNull;
 				break;
