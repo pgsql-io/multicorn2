@@ -74,6 +74,8 @@
           install -D multicorn.control -t $out/share/postgresql/extension
           runHook postInstall
         '';
+
+        separateDebugInfo = true;
       };
 
       makeMulticornPythonPackage = target_python: target_postgresql: target_python.pkgs.buildPythonPackage rec {
@@ -100,6 +102,8 @@
         '';
 
         nativeBuildInputs = [ target_postgresql ];
+
+        separateDebugInfo = true;
       };
 
       makePostgresWithPlPython = test_python: test_postgresql:
