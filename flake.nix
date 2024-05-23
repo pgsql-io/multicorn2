@@ -24,7 +24,7 @@
       testPythonVersions = with pkgs; [
         python39
         python310
-        # python311 # tests are currently broken
+        python311
         # python312 # tests are currently broken
         # python313 # tests are currently broken
       ];
@@ -127,6 +127,7 @@
           ./Makefile
           ./test-3.9
           ./test-3.10
+          ./test-3.11
           ./test-common
         ];
         unpackPhase = ''
