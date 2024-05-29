@@ -2,7 +2,7 @@
 Multicorn2
 ==========
 
-Multicorn Python3 Foreign Data Wrapper (FDW) for Postgresql.  Tested on Linux w/ Python 3.9-3.12 & Postgres 12-17.
+Multicorn Python3 Foreign Data Wrapper (FDW) for Postgresql.  Tested on Linux w/ Python 3.9-3.11 & Postgres 12-17.
 
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
 
@@ -151,7 +151,7 @@ nix build .#testSuites.test_pg12_py39
 ```
 
 **Known issues:**
-- The tests cover only the supported range of Python & PostgreSQL combinations; in particular, Python releases 3.11 and later are disabled due to failures that have not been addressed.
+- The tests cover only the supported range of Python & PostgreSQL combinations; in particular, Python releases 3.12 and later are disabled due to failures that have not been addressed.
 
 ### Adding new Python or PostgreSQL versions to the test suite
 
