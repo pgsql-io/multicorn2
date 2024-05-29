@@ -20,9 +20,25 @@ REPORT_CODES = {
 }
 
 
+class MulticornException(Exception):
+    def __init__(self, message, code, hint, detail):
+        self._is_multicorn_exception = True
+        self.message = message
+        self.code = code
+        self.hint = hint
+        self.detail = detail
+
+
 def log_to_postgres(message, level=INFO, hint=None, detail=None):
     code = REPORT_CODES.get(level, None)
     if code is None:
         raise KeyError("Not a valid log level")
-    _log_to_postgres(message, code, hint=hint, detail=detail)
-
+    if level in (ERROR, CRITICAL):
+        # if we sent an ERROR or FATAL(=CRITICAL) message to _log_to_postgres, we would trigger the PostgreSQL C-level
+        # exception handling, which would prevent us from cleanly exiting whatever Python context we're currently in.
+        # To avoid this, these log levels are replaced with exceptions which are bubbled back to Multicorn's entry
+        # points, and those exceptions are translated into appropriate logging after we exit the method at the top of
+        # the multicorn stack.
+        raise MulticornException(message, code, hint, detail)
+    else:
+        _log_to_postgres(message, code, hint=hint, detail=detail)
