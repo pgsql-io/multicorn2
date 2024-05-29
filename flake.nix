@@ -25,7 +25,7 @@
         python39
         python310
         python311
-        # python312 # tests are currently broken
+        python312
         # python313 # tests are currently broken
       ];
       testPostgresVersions = with pkgs; [
@@ -128,6 +128,7 @@
           ./test-3.9
           ./test-3.10
           ./test-3.11
+          ./test-3.12
           ./test-common
         ];
         unpackPhase = ''
