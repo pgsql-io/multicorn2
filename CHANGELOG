@@ -11,6 +11,8 @@ done so far:
    - Add support for bulk_insert FDWs on PG14+ (https://github.com/pgsql-io/multicorn2/pull/45)
    - PG16: Fix compatibility issues w/ log_to_postgres and join query planning in PostgreSQL 16 (https://github.com/pgsql-io/multicorn2/pull/51)
    - Fix crashes in EXPLAIN with complex quals (https://github.com/pgsql-io/multicorn2/pull/54)
+   - Support Python 3.11 (https://github.com/pgsql-io/multicorn2/pull/59)
+   - Behavior change: When log_to_postgres with level ERROR or FATAL is invoked, a specialized Python exception will be thrown and the stack unwound, allowing `catch` and `finally` blocks, and other things like context handler exits, to be invoked in the FDW.  (https://github.com/pgsql-io/multicorn2/pull/59)
 
 to do:
    - confirm support for Python 3.11 & 3.12

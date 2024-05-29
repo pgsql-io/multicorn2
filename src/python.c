@@ -667,7 +667,6 @@ getCacheEntry(Oid foreigntableid)
 		MemoryContextDelete(tempContext);
 	}
 	RelationClose(rel);
-	Py_INCREF(entry->value);
 
 	/*
 	 * Start a new transaction or subtransaction if needed.
@@ -685,7 +684,9 @@ getCacheEntry(Oid foreigntableid)
 PyObject *
 getInstance(Oid foreigntableid)
 {
-	return getCacheEntry(foreigntableid)->value;
+	PyObject* retval = getCacheEntry(foreigntableid)->value;
+	Py_INCREF(retval);
+	return retval;
 }
 
 
