@@ -721,6 +721,9 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 					NIL, /* no pathkeys */
 					NULL,
 					NULL,
+#if PG_VERSION_NUM >= 170000
+					NULL,
+#endif
 					NULL);
 
 				foreignPath->path.param_info = ppi;

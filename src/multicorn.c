@@ -368,6 +368,9 @@ multicornGetForeignPaths(PlannerInfo *root,
 			NIL,		/* no pathkeys */
 			NULL,
 			NULL,
+#if PG_VERSION_NUM >= 170000
+			NULL,
+#endif
 			NULL));
 
 	/* Handle sort pushdown */
@@ -402,6 +405,9 @@ multicornGetForeignPaths(PlannerInfo *root,
 					path->path.startup_cost, path->path.total_cost,
 					apply_pathkeys, NULL,
 					NULL,
+#if PG_VERSION_NUM >= 170000
+					NULL,
+#endif
 					(void *) deparsed_pathkeys);
 
 			newpath->path.param_info = path->path.param_info;
