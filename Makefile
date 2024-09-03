@@ -35,14 +35,14 @@ python_code: setup.py pyproject.toml
 	# too hard to check for.
 	#
 	$(eval PIP_VERSION := $(shell $(PIP) --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1))
-	$(eval PIP_FLAGS := $(shell [ $(PIP_VERSION) -ge 23 ] && echo "--break-system-packages"))
+	$(eval PIP_FLAGS := $(shell [ $(PIP_VERSION) -ge 23 ] && echo "--break-system-packages --ignore-installed"))
 	#
 	# Workaround https://github.com/pgsql-io/multicorn2/issues/34, and then
 	# re-evaluate PIP_VERSION/PIP_FLAGS.
 	#
 	$(PIP) install $(PIP_FLAGS) --upgrade 'pip>=23'
 	$(eval PIP_VERSION := $(shell $(PIP) --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1))
-	$(eval PIP_FLAGS := $(shell [ $(PIP_VERSION) -ge 23 ] && echo "--break-system-packages"))
+	$(eval PIP_FLAGS := $(shell [ $(PIP_VERSION) -ge 23 ] && echo "--break-system-packages --ignore-installed"))
 	$(PIP) install $(PIP_FLAGS) .
 
 release-zip: all
