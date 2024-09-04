@@ -269,7 +269,7 @@ class ForeignDataWrapper(object):
         """
         return []
 
-    def explain(self, quals, columns, sortkeys=None, verbose=False):
+    def explain(self, quals, columns, sortkeys=None, limit=None, verbose=False):
         """Hook called on explain.
 
         The arguments are the same as the :meth:`execute`, with the addition of
@@ -280,7 +280,7 @@ class ForeignDataWrapper(object):
         """
         return []
 
-    def execute(self, quals, columns, sortkeys=None):
+    def execute(self, quals, columns, sortkeys=None, limit=None, planid=None):
         """Execute a query in the foreign data wrapper.
 
         This method is called at the first iteration.

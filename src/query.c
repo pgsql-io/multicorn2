@@ -23,8 +23,8 @@ void extractClauseFromOpExpr(
     List **quals);
 
 void extractClauseFromNullTest(Relids base_relids,
-						  NullTest *node,
-						  List **quals);
+                          NullTest *node,
+                          List **quals);
 
 void extractClauseFromScalarArrayOpExpr(
 #if PG_VERSION_NUM >= 140000
@@ -37,22 +37,22 @@ void extractClauseFromScalarArrayOpExpr(
 char	   *getOperatorString(Oid opoid);
 
 MulticornBaseQual *makeQual(AttrNumber varattno, char *opname, Expr *value,
-		 bool isarray,
-		 bool useOr);
+         bool isarray,
+         bool useOr);
 
 
 Node	   *unnestClause(Node *node);
 void swapOperandsAsNeeded(Node **left, Node **right, Oid *opoid,
-					 Relids base_relids);
+                     Relids base_relids);
 OpExpr	   *canonicalOpExpr(OpExpr *opExpr, Relids base_relids);
 ScalarArrayOpExpr *canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
-						   Relids base_relids);
+                           Relids base_relids);
 
 bool isAttrInRestrictInfo(Index relid, AttrNumber attno,
-					 RestrictInfo *restrictinfo);
+                     RestrictInfo *restrictinfo);
 
 List *clausesInvolvingAttr(Index relid, AttrNumber attnum,
-					 EquivalenceClass *eq_class);
+                     EquivalenceClass *eq_class);
 
 Expr *multicorn_get_em_expr(EquivalenceClass *ec, RelOptInfo *rel);
 
@@ -65,28 +65,28 @@ Expr *multicorn_get_em_expr(EquivalenceClass *ec, RelOptInfo *rel);
 List *
 extractColumns(List *reltargetlist, List *restrictinfolist)
 {
-	ListCell   *lc;
-	List	   *columns = NULL;
-	int			i = 0;
+    ListCell   *lc;
+    List	   *columns = NULL;
+    int			i = 0;
 
-	foreach(lc, reltargetlist)
-	{
-		List	   *targetcolumns;
-		Node	   *node = (Node *) lfirst(lc);
+    foreach(lc, reltargetlist)
+    {
+        List	   *targetcolumns;
+        Node	   *node = (Node *) lfirst(lc);
 
-		targetcolumns = pull_var_clause(node, PVC_RECURSE_AGGREGATES| PVC_RECURSE_PLACEHOLDERS);
-		columns = list_union(columns, targetcolumns);
-		i++;
-	}
-	foreach(lc, restrictinfolist)
-	{
-		List	   *targetcolumns;
-		RestrictInfo *node = (RestrictInfo *) lfirst(lc);
+        targetcolumns = pull_var_clause(node, PVC_RECURSE_AGGREGATES| PVC_RECURSE_PLACEHOLDERS);
+        columns = list_union(columns, targetcolumns);
+        i++;
+    }
+    foreach(lc, restrictinfolist)
+    {
+        List	   *targetcolumns;
+        RestrictInfo *node = (RestrictInfo *) lfirst(lc);
 
-		targetcolumns = pull_var_clause((Node *) node->clause, PVC_RECURSE_AGGREGATES| PVC_RECURSE_PLACEHOLDERS);
-		columns = list_union(columns, targetcolumns);
-	}
-	return columns;
+        targetcolumns = pull_var_clause((Node *) node->clause, PVC_RECURSE_AGGREGATES| PVC_RECURSE_PLACEHOLDERS);
+        columns = list_union(columns, targetcolumns);
+    }
+    return columns;
 }
 
 /*
@@ -96,53 +96,53 @@ extractColumns(List *reltargetlist, List *restrictinfolist)
 void
 initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 {
-	int			i;
+    int			i;
 
-	for (i = 0; i < attinmeta->tupdesc->natts; i++)
-	{
-		Form_pg_attribute attr = TupleDescAttr(attinmeta->tupdesc,i);
-		Oid			outfuncoid;
-		bool		typIsVarlena;
+    for (i = 0; i < attinmeta->tupdesc->natts; i++)
+    {
+        Form_pg_attribute attr = TupleDescAttr(attinmeta->tupdesc,i);
+        Oid			outfuncoid;
+        bool		typIsVarlena;
 
 
 
-		if (!attr->attisdropped)
-		{
-			ConversionInfo *cinfo = palloc0(sizeof(ConversionInfo));
+        if (!attr->attisdropped)
+        {
+            ConversionInfo *cinfo = palloc0(sizeof(ConversionInfo));
 
-			cinfo->attoutfunc = (FmgrInfo *) palloc0(sizeof(FmgrInfo));
-			getTypeOutputInfo(attr->atttypid, &outfuncoid, &typIsVarlena);
-			fmgr_info(outfuncoid, cinfo->attoutfunc);
-			cinfo->atttypoid = attr->atttypid;
-			cinfo->atttypmod = attinmeta->atttypmods[i];
-			cinfo->attioparam = attinmeta->attioparams[i];
-			cinfo->attinfunc = &attinmeta->attinfuncs[i];
-			cinfo->attrname = NameStr(attr->attname);
-			cinfo->attnum = i + 1;
-			cinfo->attndims = attr->attndims;
-			cinfo->need_quote = false;
-			cinfos[i] = cinfo;
-		}
-		else
-		{
-			cinfos[i] = NULL;
-		}
-	}
+            cinfo->attoutfunc = (FmgrInfo *) palloc0(sizeof(FmgrInfo));
+            getTypeOutputInfo(attr->atttypid, &outfuncoid, &typIsVarlena);
+            fmgr_info(outfuncoid, cinfo->attoutfunc);
+            cinfo->atttypoid = attr->atttypid;
+            cinfo->atttypmod = attinmeta->atttypmods[i];
+            cinfo->attioparam = attinmeta->attioparams[i];
+            cinfo->attinfunc = &attinmeta->attinfuncs[i];
+            cinfo->attrname = NameStr(attr->attname);
+            cinfo->attnum = i + 1;
+            cinfo->attndims = attr->attndims;
+            cinfo->need_quote = false;
+            cinfos[i] = cinfo;
+        }
+        else
+        {
+            cinfos[i] = NULL;
+        }
+    }
 }
 
 
 char *
 getOperatorString(Oid opoid)
 {
-	HeapTuple	tp;
-	Form_pg_operator operator;
+    HeapTuple	tp;
+    Form_pg_operator operator;
 
-	tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(opoid));
-	if (!HeapTupleIsValid(tp))
-		elog(ERROR, "cache lookup failed for operator %u", opoid);
-	operator = (Form_pg_operator) GETSTRUCT(tp);
-	ReleaseSysCache(tp);
-	return NameStr(operator->oprname);
+    tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(opoid));
+    if (!HeapTupleIsValid(tp))
+        elog(ERROR, "cache lookup failed for operator %u", opoid);
+    operator = (Form_pg_operator) GETSTRUCT(tp);
+    ReleaseSysCache(tp);
+    return NameStr(operator->oprname);
 }
 
 
@@ -152,58 +152,58 @@ getOperatorString(Oid opoid)
 Node *
 unnestClause(Node *node)
 {
-	switch (node->type)
-	{
-		case T_RelabelType:
-			return (Node *) ((RelabelType *) node)->arg;
-		case T_ArrayCoerceExpr:
-			return (Node *) ((ArrayCoerceExpr *) node)->arg;
-		default:
-			return node;
-	}
+    switch (node->type)
+    {
+        case T_RelabelType:
+            return (Node *) ((RelabelType *) node)->arg;
+        case T_ArrayCoerceExpr:
+            return (Node *) ((ArrayCoerceExpr *) node)->arg;
+        default:
+            return node;
+    }
 }
 
 
 void
 swapOperandsAsNeeded(Node **left, Node **right, Oid *opoid,
-					 Relids base_relids)
+                     Relids base_relids)
 {
-	HeapTuple	tp;
-	Form_pg_operator op;
-	Node	   *l = *left,
-			   *r = *right;
+    HeapTuple	tp;
+    Form_pg_operator op;
+    Node	   *l = *left,
+               *r = *right;
 
-	tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(*opoid));
-	if (!HeapTupleIsValid(tp))
-		elog(ERROR, "cache lookup failed for operator %u", *opoid);
-	op = (Form_pg_operator) GETSTRUCT(tp);
-	ReleaseSysCache(tp);
-	/* Right is already a var. */
-	/* If "left" is a Var from another rel, and right is a Var from the */
-	/* target rel, swap them. */
-	/* Same thing is left is not a var at all. */
-	/* To swap them, we have to lookup the commutator operator. */
-	if (IsA(r, Var))
-	{
-		Var		   *rvar = (Var *) r;
+    tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(*opoid));
+    if (!HeapTupleIsValid(tp))
+        elog(ERROR, "cache lookup failed for operator %u", *opoid);
+    op = (Form_pg_operator) GETSTRUCT(tp);
+    ReleaseSysCache(tp);
+    /* Right is already a var. */
+    /* If "left" is a Var from another rel, and right is a Var from the */
+    /* target rel, swap them. */
+    /* Same thing is left is not a var at all. */
+    /* To swap them, we have to lookup the commutator operator. */
+    if (IsA(r, Var))
+    {
+        Var		   *rvar = (Var *) r;
 
-		if (!IsA(l, Var) ||
-			(!bms_is_member(((Var *) l)->varno, base_relids) &&
-			 bms_is_member(rvar->varno, base_relids)))
-		{
-			/* If the operator has no commutator operator, */
-			/* bail out. */
-			if (op->oprcom == 0)
-			{
-				return;
-			}
-			{
-				*left = r;
-				*right = l;
-				*opoid = op->oprcom;
-			}
-		}
-	}
+        if (!IsA(l, Var) ||
+            (!bms_is_member(((Var *) l)->varno, base_relids) &&
+             bms_is_member(rvar->varno, base_relids)))
+        {
+            /* If the operator has no commutator operator, */
+            /* bail out. */
+            if (op->oprcom == 0)
+            {
+                return;
+            }
+            {
+                *left = r;
+                *right = l;
+                *opoid = op->oprcom;
+            }
+        }
+    }
 
 }
 
@@ -217,29 +217,29 @@ swapOperandsAsNeeded(Node **left, Node **right, Oid *opoid,
 OpExpr *
 canonicalOpExpr(OpExpr *opExpr, Relids base_relids)
 {
-	Oid			operatorid = opExpr->opno;
-	Node	   *l,
-			   *r;
-	OpExpr	   *result = NULL;
+    Oid			operatorid = opExpr->opno;
+    Node	   *l,
+               *r;
+    OpExpr	   *result = NULL;
 
-	/* Only treat binary operators for now. */
-	if (list_length(opExpr->args) == 2)
-	{
-		l = unnestClause(list_nth(opExpr->args, 0));
-		r = unnestClause(list_nth(opExpr->args, 1));
-		swapOperandsAsNeeded(&l, &r, &operatorid, base_relids);
-		if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids)
-			&& ((Var *) l)->varattno >= 1)
-		{
-			result = (OpExpr *) make_opclause(operatorid,
-											  opExpr->opresulttype,
-											  opExpr->opretset,
-											  (Expr *) l, (Expr *) r,
-											  opExpr->opcollid,
-											  opExpr->inputcollid);
-		}
-	}
-	return result;
+    /* Only treat binary operators for now. */
+    if (list_length(opExpr->args) == 2)
+    {
+        l = unnestClause(list_nth(opExpr->args, 0));
+        r = unnestClause(list_nth(opExpr->args, 1));
+        swapOperandsAsNeeded(&l, &r, &operatorid, base_relids);
+        if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids)
+            && ((Var *) l)->varattno >= 1)
+        {
+            result = (OpExpr *) make_opclause(operatorid,
+                                              opExpr->opresulttype,
+                                              opExpr->opretset,
+                                              (Expr *) l, (Expr *) r,
+                                              opExpr->opcollid,
+                                              opExpr->inputcollid);
+        }
+    }
+    return result;
 }
 
 /*
@@ -251,39 +251,39 @@ canonicalOpExpr(OpExpr *opExpr, Relids base_relids)
  */
 ScalarArrayOpExpr *
 canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
-						   Relids base_relids)
+                           Relids base_relids)
 {
-	Oid			operatorid = opExpr->opno;
-	Node	   *l,
-			   *r;
-	ScalarArrayOpExpr *result = NULL;
-	HeapTuple	tp;
-	Form_pg_operator op;
+    Oid			operatorid = opExpr->opno;
+    Node	   *l,
+               *r;
+    ScalarArrayOpExpr *result = NULL;
+    HeapTuple	tp;
+    Form_pg_operator op;
 
-	/* Only treat binary operators for now. */
-	if (list_length(opExpr->args) == 2)
-	{
-		l = unnestClause(list_nth(opExpr->args, 0));
-		r = unnestClause(list_nth(opExpr->args, 1));
-		tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(operatorid));
-		if (!HeapTupleIsValid(tp))
-			elog(ERROR, "cache lookup failed for operator %u", operatorid);
-		op = (Form_pg_operator) GETSTRUCT(tp);
-		ReleaseSysCache(tp);
-		if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids)
-			&& ((Var *) l)->varattno >= 1)
-		{
-			result = makeNode(ScalarArrayOpExpr);
-			result->opno = operatorid;
-			result->opfuncid = op->oprcode;
-			result->useOr = opExpr->useOr;
-			result->args = lappend(result->args, l);
-			result->args = lappend(result->args, r);
-			result->location = opExpr->location;
+    /* Only treat binary operators for now. */
+    if (list_length(opExpr->args) == 2)
+    {
+        l = unnestClause(list_nth(opExpr->args, 0));
+        r = unnestClause(list_nth(opExpr->args, 1));
+        tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(operatorid));
+        if (!HeapTupleIsValid(tp))
+            elog(ERROR, "cache lookup failed for operator %u", operatorid);
+        op = (Form_pg_operator) GETSTRUCT(tp);
+        ReleaseSysCache(tp);
+        if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids)
+            && ((Var *) l)->varattno >= 1)
+        {
+            result = makeNode(ScalarArrayOpExpr);
+            result->opno = operatorid;
+            result->opfuncid = op->oprcode;
+            result->useOr = opExpr->useOr;
+            result->args = lappend(result->args, l);
+            result->args = lappend(result->args, r);
+            result->location = opExpr->location;
 
-		}
-	}
-	return result;
+        }
+    }
+    return result;
 }
 
 
@@ -294,42 +294,42 @@ canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
 void
 extractRestrictions(
 #if PG_VERSION_NUM >= 140000
-					PlannerInfo *root,
+                    PlannerInfo *root,
 #endif
-					Relids base_relids,
-					Expr *node,
-					List **quals)
+                    Relids base_relids,
+                    Expr *node,
+                    List **quals)
 {
-	elog(DEBUG3, "entering extractRestrictions()");
-	switch (nodeTag(node))
-	{
-		case T_OpExpr:
-			extractClauseFromOpExpr(
+    elog(DEBUG3, "entering extractRestrictions()");
+    switch (nodeTag(node))
+    {
+        case T_OpExpr:
+            extractClauseFromOpExpr(
 #if PG_VERSION_NUM >= 140000
-									(PlannerInfo *) root,
+                                    (PlannerInfo *) root,
 #endif
-									base_relids, (OpExpr *) node, quals);
-			break;
-		case T_NullTest:
-			extractClauseFromNullTest(base_relids,
-									  (NullTest *) node, quals);
-			break;
-		case T_ScalarArrayOpExpr:
-			extractClauseFromScalarArrayOpExpr(
+                                    base_relids, (OpExpr *) node, quals);
+            break;
+        case T_NullTest:
+            extractClauseFromNullTest(base_relids,
+                                      (NullTest *) node, quals);
+            break;
+        case T_ScalarArrayOpExpr:
+            extractClauseFromScalarArrayOpExpr(
 #if PG_VERSION_NUM >= 140000
-									(PlannerInfo *) root,
+                                    (PlannerInfo *) root,
 #endif
-									base_relids, (ScalarArrayOpExpr *) node, quals);
-			break;
-		default:
-			{
-				ereport(WARNING,
-						(errmsg("unsupported expression for "
-								"extractClauseFrom"),
-						 errdetail("%s", nodeToString(node))));
-			}
-			break;
-	}
+                                    base_relids, (ScalarArrayOpExpr *) node, quals);
+            break;
+        default:
+            {
+                ereport(WARNING,
+                        (errmsg("unsupported expression for "
+                                "extractClauseFrom"),
+                         errdetail("%s", nodeToString(node))));
+            }
+            break;
+    }
 }
 
 /*
@@ -349,32 +349,32 @@ extractClauseFromOpExpr(
 #endif
                         Relids base_relids, OpExpr *op, List **quals)
 {
-	Var		   *left;
-	Expr	   *right;
+    Var		   *left;
+    Expr	   *right;
 
-	elog(DEBUG3, "entering extractClauseFromOpExpr()");
-	/* Use a "canonical" version of the op expression, to ensure that the */
-	/* left operand is a Var on our relation. */
-	op = canonicalOpExpr(op, base_relids);
-	if (op)
-	{
-		left = list_nth(op->args, 0);
-		right = list_nth(op->args, 1);
-		/* Do not add it if it either contains a mutable function, or makes */
-		/* self references in the right hand side. */
-		if (!(contain_volatile_functions((Node *) right) ||
-			  bms_is_subset(base_relids, 
-					pull_varnos(
+    elog(DEBUG3, "entering extractClauseFromOpExpr()");
+    /* Use a "canonical" version of the op expression, to ensure that the */
+    /* left operand is a Var on our relation. */
+    op = canonicalOpExpr(op, base_relids);
+    if (op)
+    {
+        left = list_nth(op->args, 0);
+        right = list_nth(op->args, 1);
+        /* Do not add it if it either contains a mutable function, or makes */
+        /* self references in the right hand side. */
+        if (!(contain_volatile_functions((Node *) right) ||
+              bms_is_subset(base_relids, 
+                    pull_varnos(
 #if PG_VERSION_NUM >= 140000
-											root,
+                                            root,
 #endif
-											(Node *) right))))
-		{
-			*quals = lappend(*quals, makeQual(left->varattno,
-											  getOperatorString(op->opno),
-											  right, false, false));
-		}
-	}
+                                            (Node *) right))))
+        {
+            *quals = lappend(*quals, makeQual(left->varattno,
+                                              getOperatorString(op->opno),
+                                              right, false, false));
+        }
+    }
 }
 
 void
@@ -386,29 +386,29 @@ extractClauseFromScalarArrayOpExpr(
     ScalarArrayOpExpr *op,
     List **quals)
 {
-	Var		   *left;
-	Expr	   *right;
+    Var		   *left;
+    Expr	   *right;
 
-	elog(DEBUG3, "entering extractClauseFromScalarArrayOpExpr()");
-	op = canonicalScalarArrayOpExpr(op, base_relids);
-	if (op)
-	{
-		left = list_nth(op->args, 0);
-		right = list_nth(op->args, 1);
-		if (!(contain_volatile_functions((Node *) right) ||
-			  bms_is_subset(base_relids, pull_varnos(
+    elog(DEBUG3, "entering extractClauseFromScalarArrayOpExpr()");
+    op = canonicalScalarArrayOpExpr(op, base_relids);
+    if (op)
+    {
+        left = list_nth(op->args, 0);
+        right = list_nth(op->args, 1);
+        if (!(contain_volatile_functions((Node *) right) ||
+              bms_is_subset(base_relids, pull_varnos(
 #if PG_VERSION_NUM >= 140000
                                               root,
 #endif
                                               (Node *) right))))
 
-		{
-			*quals = lappend(*quals, makeQual(left->varattno,
-											  getOperatorString(op->opno),
-											  right, true,
-											  op->useOr));
-		}
-	}
+        {
+            *quals = lappend(*quals, makeQual(left->varattno,
+                                              getOperatorString(op->opno),
+                                              right, true,
+                                              op->useOr));
+        }
+    }
 }
 
 
@@ -418,34 +418,34 @@ extractClauseFromScalarArrayOpExpr(
  */
 void
 extractClauseFromNullTest(Relids base_relids,
-						  NullTest *node,
-						  List **quals)
+                          NullTest *node,
+                          List **quals)
 {
-	elog(DEBUG3, "entering extractClauseFromNullTest()");
-	if (IsA(node->arg, Var))
-	{
-		Var		   *var = (Var *) node->arg;
-		MulticornBaseQual *result;
-		char	   *opname = NULL;
+    elog(DEBUG3, "entering extractClauseFromNullTest()");
+    if (IsA(node->arg, Var))
+    {
+        Var		   *var = (Var *) node->arg;
+        MulticornBaseQual *result;
+        char	   *opname = NULL;
 
-		if (var->varattno < 1)
-		{
-			return;
-		}
-		if (node->nulltesttype == IS_NULL)
-		{
-			opname = "=";
-		}
-		else
-		{
-			opname = "<>";
-		}
-		result = makeQual(var->varattno, opname,
-						  (Expr *) makeNullConst(INT4OID, -1, InvalidOid),
-						  false,
-						  false);
-		*quals = lappend(*quals, result);
-	}
+        if (var->varattno < 1)
+        {
+            return;
+        }
+        if (node->nulltesttype == IS_NULL)
+        {
+            opname = "=";
+        }
+        else
+        {
+            opname = "<>";
+        }
+        result = makeQual(var->varattno, opname,
+                          (Expr *) makeNullConst(INT4OID, -1, InvalidOid),
+                          false,
+                          false);
+        *quals = lappend(*quals, result);
+    }
 }
 
 
@@ -460,17 +460,17 @@ String *
 #endif
 colnameFromVar(Var *var, PlannerInfo *root, MulticornPlanState * planstate)
 {
-	RangeTblEntry *rte = rte = planner_rt_fetch(var->varno, root);
-	char	   *attname = get_attname(rte->relid, var->varattno);
+    RangeTblEntry *rte = rte = planner_rt_fetch(var->varno, root);
+    char	   *attname = get_attname(rte->relid, var->varattno);
 
-	if (attname == NULL)
-	{
-		return NULL;
-	}
-	else
-	{
-		return makeString(attname);
-	}
+    if (attname == NULL)
+    {
+        return NULL;
+    }
+    else
+    {
+        return makeString(attname);
+    }
 }
 
 /*
@@ -478,41 +478,41 @@ colnameFromVar(Var *var, PlannerInfo *root, MulticornPlanState * planstate)
  */
 MulticornBaseQual *
 makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
-		 bool useOr)
+         bool useOr)
 {
-	MulticornBaseQual *qual;
+    MulticornBaseQual *qual;
 
-	elog(DEBUG3, "begin makeQual() opname '%s': type '%d'", opname, value->type);
-	switch (value->type)
-	{
-		case T_Const:
-	                elog(DEBUG3, "T_Const");
-			qual = palloc0(sizeof(MulticornConstQual));
-			qual->right_type = T_Const;
-			qual->typeoid = ((Const *) value)->consttype;
-			((MulticornConstQual *) qual)->value = ((Const *) value)->constvalue;
-			((MulticornConstQual *) qual)->isnull = ((Const *) value)->constisnull;
-			break;
-		case T_Var:
-	                elog(DEBUG3, "T_Var");
-			qual = palloc0(sizeof(MulticornVarQual));
-			qual->right_type = T_Var;
-			((MulticornVarQual *) qual)->rightvarattno = ((Var *) value)->varattno;
-			break;
-		default:
-	                elog(DEBUG3, "default");
-			qual = palloc0(sizeof(MulticornParamQual));
-			qual->right_type = T_Param;
-			((MulticornParamQual *) qual)->expr = value;
-			qual->typeoid = InvalidOid;
-			break;
-	}
-	qual->varattno = varattno;
-	qual->opname = opname;
-	qual->isArray = isarray;
-	qual->useOr = useOr;
-	elog(DEBUG3, "makeQual() opname '%s': right_type '%d'", opname, qual->right_type);
-	return qual;
+    elog(DEBUG3, "begin makeQual() opname '%s': type '%d'", opname, value->type);
+    switch (value->type)
+    {
+        case T_Const:
+                    elog(DEBUG3, "T_Const");
+            qual = palloc0(sizeof(MulticornConstQual));
+            qual->right_type = T_Const;
+            qual->typeoid = ((Const *) value)->consttype;
+            ((MulticornConstQual *) qual)->value = ((Const *) value)->constvalue;
+            ((MulticornConstQual *) qual)->isnull = ((Const *) value)->constisnull;
+            break;
+        case T_Var:
+                    elog(DEBUG3, "T_Var");
+            qual = palloc0(sizeof(MulticornVarQual));
+            qual->right_type = T_Var;
+            ((MulticornVarQual *) qual)->rightvarattno = ((Var *) value)->varattno;
+            break;
+        default:
+                    elog(DEBUG3, "default");
+            qual = palloc0(sizeof(MulticornParamQual));
+            qual->right_type = T_Param;
+            ((MulticornParamQual *) qual)->expr = value;
+            qual->typeoid = InvalidOid;
+            break;
+    }
+    qual->varattno = varattno;
+    qual->opname = opname;
+    qual->isArray = isarray;
+    qual->useOr = useOr;
+    elog(DEBUG3, "makeQual() opname '%s': right_type '%d'", opname, qual->right_type);
+    return qual;
 }
 
 /*
@@ -522,48 +522,48 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 bool
 isAttrInRestrictInfo(Index relid, AttrNumber attno, RestrictInfo *restrictinfo)
 {
-	List	   *vars = pull_var_clause((Node *) restrictinfo->clause, PVC_RECURSE_AGGREGATES| PVC_RECURSE_PLACEHOLDERS);
-	ListCell   *lc;
+    List	   *vars = pull_var_clause((Node *) restrictinfo->clause, PVC_RECURSE_AGGREGATES| PVC_RECURSE_PLACEHOLDERS);
+    ListCell   *lc;
 
-	foreach(lc, vars)
-	{
-		Var		   *var = (Var *) lfirst(lc);
+    foreach(lc, vars)
+    {
+        Var		   *var = (Var *) lfirst(lc);
 
-		if (var->varno == relid && var->varattno == attno)
-		{
-			return true;
-		}
+        if (var->varno == relid && var->varattno == attno)
+        {
+            return true;
+        }
 
-	}
-	return false;
+    }
+    return false;
 }
 
 List *
 clausesInvolvingAttr(Index relid, AttrNumber attnum,
-					 EquivalenceClass *ec)
+                     EquivalenceClass *ec)
 {
-	List	   *clauses = NULL;
+    List	   *clauses = NULL;
 
-	/*
-	 * If there is only one member, then the equivalence class is either for
-	 * an outer join, or a desired sort order. So we better leave it
-	 * untouched.
-	 */
-	if (ec->ec_members->length > 1)
-	{
-		ListCell   *ri_lc;
+    /*
+     * If there is only one member, then the equivalence class is either for
+     * an outer join, or a desired sort order. So we better leave it
+     * untouched.
+     */
+    if (ec->ec_members->length > 1)
+    {
+        ListCell   *ri_lc;
 
-		foreach(ri_lc, ec->ec_sources)
-		{
-			RestrictInfo *ri = (RestrictInfo *) lfirst(ri_lc);
+        foreach(ri_lc, ec->ec_sources)
+        {
+            RestrictInfo *ri = (RestrictInfo *) lfirst(ri_lc);
 
-			if (isAttrInRestrictInfo(relid, attnum, ri))
-			{
-				clauses = lappend(clauses, ri);
-			}
-		}
-	}
-	return clauses;
+            if (isAttrInRestrictInfo(relid, attnum, ri))
+            {
+                clauses = lappend(clauses, ri);
+            }
+        }
+    }
+    return clauses;
 }
 
 /*
@@ -572,166 +572,166 @@ clausesInvolvingAttr(Index relid, AttrNumber attnum,
  * the FDW and that the FDW say it can enforce.
  */
 void computeDeparsedSortGroup(List *deparsed, MulticornPlanState *planstate,
-		List **apply_pathkeys,
-		List **deparsed_pathkeys)
+        List **apply_pathkeys,
+        List **deparsed_pathkeys)
 {
-	List		*sortable_fields = NULL;
-	ListCell	*lc, *lc2;
+    List		*sortable_fields = NULL;
+    ListCell	*lc, *lc2;
 
-	/* Both lists should be empty */
-	Assert(*apply_pathkeys == NIL);
-	Assert(*deparsed_pathkeys == NIL);
+    /* Both lists should be empty */
+    Assert(*apply_pathkeys == NIL);
+    Assert(*deparsed_pathkeys == NIL);
 
-	/* Don't ask FDW if nothing to sort */
-	if (deparsed == NIL)
-		return;
+    /* Don't ask FDW if nothing to sort */
+    if (deparsed == NIL)
+        return;
 
-	sortable_fields = canSort(planstate, deparsed);
+    sortable_fields = canSort(planstate, deparsed);
 
-	/* Don't go further if FDW can't enforce any sort */
-	if (sortable_fields == NIL)
-		return;
+    /* Don't go further if FDW can't enforce any sort */
+    if (sortable_fields == NIL)
+        return;
 
-	foreach(lc, sortable_fields)
-	{
-		MulticornDeparsedSortGroup *sortable_md = (MulticornDeparsedSortGroup *) lfirst(lc);
-		foreach(lc2, deparsed)
-		{
-			MulticornDeparsedSortGroup *wanted_md = lfirst(lc2);
+    foreach(lc, sortable_fields)
+    {
+        MulticornDeparsedSortGroup *sortable_md = (MulticornDeparsedSortGroup *) lfirst(lc);
+        foreach(lc2, deparsed)
+        {
+            MulticornDeparsedSortGroup *wanted_md = lfirst(lc2);
 
-			if (sortable_md->attnum == wanted_md->attnum)
-			{
-				*apply_pathkeys = lappend(*apply_pathkeys, wanted_md->key);
-				*deparsed_pathkeys = lappend(*deparsed_pathkeys, wanted_md);
-			}
-		}
-	}
+            if (sortable_md->attnum == wanted_md->attnum)
+            {
+                *apply_pathkeys = lappend(*apply_pathkeys, wanted_md->key);
+                *deparsed_pathkeys = lappend(*deparsed_pathkeys, wanted_md);
+            }
+        }
+    }
 }
 
 
 List *
 findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
-		int startupCost,
-		MulticornPlanState *state,
-		List *apply_pathkeys, List *deparsed_pathkeys)
+        int startupCost,
+        MulticornPlanState *state,
+        List *apply_pathkeys, List *deparsed_pathkeys)
 {
-	List	   *result = NULL;
-	ListCell   *lc;
+    List	   *result = NULL;
+    ListCell   *lc;
 
-	foreach(lc, possiblePaths)
-	{
-		List	   *item = lfirst(lc);
-		List	   *attrnos = linitial(item);
-		ListCell   *attno_lc;
-		int			nbrows = ((Const *) lsecond(item))->constvalue;
-		List	   *allclauses = NULL;
-		Bitmapset  *outer_relids = NULL;
+    foreach(lc, possiblePaths)
+    {
+        List	   *item = lfirst(lc);
+        List	   *attrnos = linitial(item);
+        ListCell   *attno_lc;
+        int			nbrows = ((Const *) lsecond(item))->constvalue;
+        List	   *allclauses = NULL;
+        Bitmapset  *outer_relids = NULL;
 
-		/* Armed with this knowledge, look for a join condition */
-		/* matching the path list. */
-		/* Every key must be present in either, a join clause or an */
-		/* equivalence_class. */
-		foreach(attno_lc, attrnos)
-		{
-			AttrNumber	attnum = lfirst_int(attno_lc);
-			ListCell   *lc1;
-			List	   *clauses = NULL;
+        /* Armed with this knowledge, look for a join condition */
+        /* matching the path list. */
+        /* Every key must be present in either, a join clause or an */
+        /* equivalence_class. */
+        foreach(attno_lc, attrnos)
+        {
+            AttrNumber	attnum = lfirst_int(attno_lc);
+            ListCell   *lc1;
+            List	   *clauses = NULL;
 
-			/* Look in the equivalence classes. */
-			foreach(lc1, root->eq_classes)
-			{
-				EquivalenceClass *ec = (EquivalenceClass *) lfirst(lc1);
-				List	   *ec_clauses = clausesInvolvingAttr(baserel->relid,
-															  attnum,
-															  ec);
+            /* Look in the equivalence classes. */
+            foreach(lc1, root->eq_classes)
+            {
+                EquivalenceClass *ec = (EquivalenceClass *) lfirst(lc1);
+                List	   *ec_clauses = clausesInvolvingAttr(baserel->relid,
+                                                              attnum,
+                                                              ec);
 
-				clauses = list_concat(clauses, ec_clauses);
-				if (ec_clauses != NIL)
-				{
-					outer_relids = bms_union(outer_relids, ec->ec_relids);
-				}
-			}
-			/* Do the same thing for the outer joins */
-			foreach(lc1, list_union(root->left_join_clauses,
-								   root->right_join_clauses))
-			{
-				Node *node = (Node *) lfirst(lc1);
-				RestrictInfo *ri;
+                clauses = list_concat(clauses, ec_clauses);
+                if (ec_clauses != NIL)
+                {
+                    outer_relids = bms_union(outer_relids, ec->ec_relids);
+                }
+            }
+            /* Do the same thing for the outer joins */
+            foreach(lc1, list_union(root->left_join_clauses,
+                                   root->right_join_clauses))
+            {
+                Node *node = (Node *) lfirst(lc1);
+                RestrictInfo *ri;
 
 #if PG_VERSION_NUM >= 160000
-				OuterJoinClauseInfo *ojcinfo;
+                OuterJoinClauseInfo *ojcinfo;
 
-				if (nodeTag(node) != T_OuterJoinClauseInfo)
-				{
-					elog(ERROR, "join clause was not a T_OuterJoinClauseInfo; but was a %d", nodeTag(node));
-					continue;
-				}
+                if (nodeTag(node) != T_OuterJoinClauseInfo)
+                {
+                    elog(ERROR, "join clause was not a T_OuterJoinClauseInfo; but was a %d", nodeTag(node));
+                    continue;
+                }
 
-				ojcinfo = (OuterJoinClauseInfo *) node;
-				node = (Node *) ojcinfo->rinfo;
+                ojcinfo = (OuterJoinClauseInfo *) node;
+                node = (Node *) ojcinfo->rinfo;
 #endif
 
-				if (nodeTag(node) != T_RestrictInfo)
-				{
-					elog(ERROR, "join clause was not a T_RestrictInfo; but was a %d", nodeTag(node));
-					continue;
-				}
-				ri = (RestrictInfo *) node;
+                if (nodeTag(node) != T_RestrictInfo)
+                {
+                    elog(ERROR, "join clause was not a T_RestrictInfo; but was a %d", nodeTag(node));
+                    continue;
+                }
+                ri = (RestrictInfo *) node;
 
-				if (isAttrInRestrictInfo(baserel->relid, attnum, ri))
-				{
-					clauses = lappend(clauses, ri);
-					outer_relids = bms_union(outer_relids,
-											 ri->outer_relids);
-				}
-			}
-			/* We did NOT find anything for this key, bail out */
-			if (clauses == NIL)
-			{
-				allclauses = NULL;
-				break;
-			}
-			else
-			{
-				allclauses = list_concat(allclauses, clauses);
-			}
-		}
-		/* Every key has a corresponding restriction, we can build */
-		/* the parameterized path and add it to the plan. */
-		if (allclauses != NIL)
-		{
-			Bitmapset  *req_outer = bms_difference(outer_relids,
-										 bms_make_singleton(baserel->relid));
-			ParamPathInfo *ppi;
-			ForeignPath *foreignPath;
+                if (isAttrInRestrictInfo(baserel->relid, attnum, ri))
+                {
+                    clauses = lappend(clauses, ri);
+                    outer_relids = bms_union(outer_relids,
+                                             ri->outer_relids);
+                }
+            }
+            /* We did NOT find anything for this key, bail out */
+            if (clauses == NIL)
+            {
+                allclauses = NULL;
+                break;
+            }
+            else
+            {
+                allclauses = list_concat(allclauses, clauses);
+            }
+        }
+        /* Every key has a corresponding restriction, we can build */
+        /* the parameterized path and add it to the plan. */
+        if (allclauses != NIL)
+        {
+            Bitmapset  *req_outer = bms_difference(outer_relids,
+                                         bms_make_singleton(baserel->relid));
+            ParamPathInfo *ppi;
+            ForeignPath *foreignPath;
 
-			if (!bms_is_empty(req_outer))
-			{
-				ppi = makeNode(ParamPathInfo);
-				ppi->ppi_req_outer = req_outer;
-				ppi->ppi_rows = nbrows;
-				ppi->ppi_clauses = list_concat(ppi->ppi_clauses, allclauses);
-				/* Add a simple parameterized path */
-				foreignPath = create_foreignscan_path(
-					root, baserel,
-				 	NULL,  /* default pathtarget */
-					nbrows,
-					startupCost,
-					nbrows * baserel->reltarget->width,
-					NIL, /* no pathkeys */
-					NULL,
-					NULL,
+            if (!bms_is_empty(req_outer))
+            {
+                ppi = makeNode(ParamPathInfo);
+                ppi->ppi_req_outer = req_outer;
+                ppi->ppi_rows = nbrows;
+                ppi->ppi_clauses = list_concat(ppi->ppi_clauses, allclauses);
+                /* Add a simple parameterized path */
+                foreignPath = create_foreignscan_path(
+                    root, baserel,
+                     NULL,  /* default pathtarget */
+                    nbrows,
+                    startupCost,
+                    nbrows * baserel->reltarget->width,
+                    NIL, /* no pathkeys */
+                    NULL,
+                    NULL,
 #if PG_VERSION_NUM >= 170000
-					NULL,
+                    NULL,
 #endif
-					NULL);
+                    NULL);
 
-				foreignPath->path.param_info = ppi;
-				result = lappend(result, foreignPath);
-			}
-		}
-	}
-	return result;
+                foreignPath->path.param_info = ppi;
+                result = lappend(result, foreignPath);
+            }
+        }
+    }
+    return result;
 }
 
 /*
@@ -742,181 +742,181 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 List *
 deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
 {
-	List *result = NULL;
-	ListCell   *lc;
+    List *result = NULL;
+    ListCell   *lc;
 
-	/* return empty list if no pathkeys for the PlannerInfo */
-	if (! root->query_pathkeys)
-		return NIL;
+    /* return empty list if no pathkeys for the PlannerInfo */
+    if (! root->query_pathkeys)
+        return NIL;
 
-	foreach(lc,root->query_pathkeys)
-	{
-		PathKey *key = (PathKey *) lfirst(lc);
-		MulticornDeparsedSortGroup *md = palloc0(sizeof(MulticornDeparsedSortGroup));
-		EquivalenceClass *ec = key->pk_eclass;
-		Expr *expr;
-		bool found = false;
+    foreach(lc,root->query_pathkeys)
+    {
+        PathKey *key = (PathKey *) lfirst(lc);
+        MulticornDeparsedSortGroup *md = palloc0(sizeof(MulticornDeparsedSortGroup));
+        EquivalenceClass *ec = key->pk_eclass;
+        Expr *expr;
+        bool found = false;
 
-		if ((expr = multicorn_get_em_expr(ec, rel)))
-		{
-			md->reversed = (key->pk_strategy == BTGreaterStrategyNumber);
-			md->nulls_first = key->pk_nulls_first;
-			md->key = key;
+        if ((expr = multicorn_get_em_expr(ec, rel)))
+        {
+            md->reversed = (key->pk_strategy == BTGreaterStrategyNumber);
+            md->nulls_first = key->pk_nulls_first;
+            md->key = key;
 
-			if (IsA(expr, Var))
-			{
-				Var *var = (Var *) expr;
-				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno));
-				md->attnum = var->varattno;
-				found = true;
-			}
-			/* ORDER BY clauses having a COLLATE option will be RelabelType */
-			else if (IsA(expr, RelabelType) &&
-					IsA(((RelabelType *) expr)->arg, Var))
-			{
-				Var *var = (Var *)((RelabelType *) expr)->arg;
-				Oid collid = ((RelabelType *) expr)->resultcollid;
+            if (IsA(expr, Var))
+            {
+                Var *var = (Var *) expr;
+                md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno));
+                md->attnum = var->varattno;
+                found = true;
+            }
+            /* ORDER BY clauses having a COLLATE option will be RelabelType */
+            else if (IsA(expr, RelabelType) &&
+                    IsA(((RelabelType *) expr)->arg, Var))
+            {
+                Var *var = (Var *)((RelabelType *) expr)->arg;
+                Oid collid = ((RelabelType *) expr)->resultcollid;
 
-				if (collid == DEFAULT_COLLATION_OID)
-					md->collate = NULL;
-				else
-					md->collate = (Name) strdup(get_collation_name(collid));
-				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno));
-				md->attnum = var->varattno;
-				found = true;
-			}
-		}
+                if (collid == DEFAULT_COLLATION_OID)
+                    md->collate = NULL;
+                else
+                    md->collate = (Name) strdup(get_collation_name(collid));
+                md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno));
+                md->attnum = var->varattno;
+                found = true;
+            }
+        }
 
-		if (found)
-			result = lappend(result, md);
-		else
-		{
-			/* pfree() current entry */
-			pfree(md);
-			/* pfree() all previous entries */
-			while ((lc = list_head(result)) != NULL)
-			{
-				md = (MulticornDeparsedSortGroup *) lfirst(lc);
-				result = list_delete_ptr(result, md);
-				pfree(md);
-			}
-			break;
-		}
-	}
+        if (found)
+            result = lappend(result, md);
+        else
+        {
+            /* pfree() current entry */
+            pfree(md);
+            /* pfree() all previous entries */
+            while ((lc = list_head(result)) != NULL)
+            {
+                md = (MulticornDeparsedSortGroup *) lfirst(lc);
+                result = list_delete_ptr(result, md);
+                pfree(md);
+            }
+            break;
+        }
+    }
 
-	return result;
+    return result;
 }
 
 Expr *
 multicorn_get_em_expr(EquivalenceClass *ec, RelOptInfo *rel)
 {
-	ListCell   *lc_em;
+    ListCell   *lc_em;
 
-	foreach(lc_em, ec->ec_members)
-	{
-		EquivalenceMember *em = lfirst(lc_em);
+    foreach(lc_em, ec->ec_members)
+    {
+        EquivalenceMember *em = lfirst(lc_em);
 
-		if (bms_equal(em->em_relids, rel->relids))
-		{
-			/*
-			 * If there is more than one equivalence member whose Vars are
-			 * taken entirely from this relation, we'll be content to choose
-			 * any one of those.
-			 */
-			return em->em_expr;
-		}
-	}
+        if (bms_equal(em->em_relids, rel->relids))
+        {
+            /*
+             * If there is more than one equivalence member whose Vars are
+             * taken entirely from this relation, we'll be content to choose
+             * any one of those.
+             */
+            return em->em_expr;
+        }
+    }
 
-	/* We didn't find any suitable equivalence class expression */
-	return NULL;
+    /* We didn't find any suitable equivalence class expression */
+    return NULL;
 }
 
 List *
 serializeDeparsedSortGroup(List *pathkeys)
 {
-	List *result = NIL;
-	ListCell *lc;
+    List *result = NIL;
+    ListCell *lc;
 
-	foreach(lc, pathkeys)
-	{
-		List *item = NIL;
-		MulticornDeparsedSortGroup *key = (MulticornDeparsedSortGroup *)
-			lfirst(lc);
+    foreach(lc, pathkeys)
+    {
+        List *item = NIL;
+        MulticornDeparsedSortGroup *key = (MulticornDeparsedSortGroup *)
+            lfirst(lc);
 
-		item = lappend(item, makeString(NameStr(*(key->attname))));
-		item = lappend(item, makeInteger(key->attnum));
-		item = lappend(item, makeInteger(key->reversed));
-		item = lappend(item, makeInteger(key->nulls_first));
-		if(key->collate != NULL)
-			item = lappend(item, makeString(NameStr(*(key->collate))));
-		else
-			item = lappend(item, NULL);
-		item = lappend(item, key->key);
+        item = lappend(item, makeString(NameStr(*(key->attname))));
+        item = lappend(item, makeInteger(key->attnum));
+        item = lappend(item, makeInteger(key->reversed));
+        item = lappend(item, makeInteger(key->nulls_first));
+        if(key->collate != NULL)
+            item = lappend(item, makeString(NameStr(*(key->collate))));
+        else
+            item = lappend(item, NULL);
+        item = lappend(item, key->key);
 
-		result = lappend(result, item);
-	}
+        result = lappend(result, item);
+    }
 
-	return result;
+    return result;
 }
 
 List *
 deserializeDeparsedSortGroup(List *items)
 {
-	List *result = NIL;
-	ListCell *k;
+    List *result = NIL;
+    ListCell *k;
 
-	foreach(k, items)
-	{
-		ListCell *lc;
-		MulticornDeparsedSortGroup *key =
-			palloc0(sizeof(MulticornDeparsedSortGroup));
+    foreach(k, items)
+    {
+        ListCell *lc;
+        MulticornDeparsedSortGroup *key =
+            palloc0(sizeof(MulticornDeparsedSortGroup));
 #if PG_VERSION_NUM >= 130000
-		List *list = lfirst(k);
+        List *list = lfirst(k);
 #endif
 
-		lc = list_head(lfirst(k));
-		key->attname = (Name) strdup(strVal(lfirst(lc)));
+        lc = list_head(lfirst(k));
+        key->attname = (Name) strdup(strVal(lfirst(lc)));
 
 #if PG_VERSION_NUM >= 130000
-		lc = lnext(list, lc);
+        lc = lnext(list, lc);
 #else
-		lc = lnext(lc);
+        lc = lnext(lc);
 #endif
-		key->attnum = (int) intVal(lfirst(lc));
+        key->attnum = (int) intVal(lfirst(lc));
 
 #if PG_VERSION_NUM >= 130000
-		lc = lnext(list, lc);
+        lc = lnext(list, lc);
 #else
-		lc = lnext(lc);
+        lc = lnext(lc);
 #endif
-		key->reversed = (bool) intVal(lfirst(lc));
+        key->reversed = (bool) intVal(lfirst(lc));
 
 #if PG_VERSION_NUM >= 130000
-		lc = lnext(list, lc);
+        lc = lnext(list, lc);
 #else
-		lc = lnext(lc);
+        lc = lnext(lc);
 #endif
-		key->nulls_first = (bool) intVal(lfirst(lc));
+        key->nulls_first = (bool) intVal(lfirst(lc));
 
 #if PG_VERSION_NUM >= 130000
-		lc = lnext(list, lc);
+        lc = lnext(list, lc);
 #else
-		lc = lnext(lc);
+        lc = lnext(lc);
 #endif
-		if(lfirst(lc) != NULL)
-			key->collate = (Name) strdup(strVal(lfirst(lc)));
-		else
-			key->collate = NULL;
+        if(lfirst(lc) != NULL)
+            key->collate = (Name) strdup(strVal(lfirst(lc)));
+        else
+            key->collate = NULL;
 
 #if PG_VERSION_NUM >= 130000
-		lc = lnext(list, lc);
+        lc = lnext(list, lc);
 #else
-		lc = lnext(lc);
+        lc = lnext(lc);
 #endif
-		key->key = (PathKey *) lfirst(lc);
+        key->key = (PathKey *) lfirst(lc);
 
-		result = lappend(result, key);
-	}
+        result = lappend(result, key);
+    }
 
-	return result;
+    return result;
 }

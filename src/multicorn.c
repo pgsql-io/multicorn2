@@ -26,6 +26,8 @@
 #include "utils/rel.h"
 #include "parser/parsetree.h"
 #include "fmgr.h"
+#include "port/atomics.h"
+
 #if PG_VERSION_NUM >= 130000
 #include "common/hashfn.h" /* oid_hash */
 #endif
@@ -50,19 +52,19 @@ void		_PG_fini(void);
  */
 
 static void multicornGetForeignRelSize(PlannerInfo *root,
-						   RelOptInfo *baserel,
-						   Oid foreigntableid);
+                           RelOptInfo *baserel,
+                           Oid foreigntableid);
 static void multicornGetForeignPaths(PlannerInfo *root,
-						 RelOptInfo *baserel,
-						 Oid foreigntableid);
+                         RelOptInfo *baserel,
+                         Oid foreigntableid);
 static ForeignScan *multicornGetForeignPlan(PlannerInfo *root,
-						RelOptInfo *baserel,
-						Oid foreigntableid,
-						ForeignPath *best_path,
-						List *tlist,
-						List *scan_clauses
-						, Plan *outer_plan
-		);
+                        RelOptInfo *baserel,
+                        Oid foreigntableid,
+                        ForeignPath *best_path,
+                        List *tlist,
+                        List *scan_clauses
+                        , Plan *outer_plan
+        );
 static void multicornExplainForeignScan(ForeignScanState *node, ExplainState *es);
 static void multicornBeginForeignScan(ForeignScanState *node, int eflags);
 static TupleTableSlot *multicornIterateForeignScan(ForeignScanState *node);
@@ -71,46 +73,46 @@ static void multicornEndForeignScan(ForeignScanState *node);
 
 static void multicornAddForeignUpdateTargets(
 #if PG_VERSION_NUM >= 140000
-								 PlannerInfo *root,
-								 Index rtindex,
+                                 PlannerInfo *root,
+                                 Index rtindex,
 #else
-								 Query *parsetree,
+                                 Query *parsetree,
 #endif
-								 RangeTblEntry *target_rte,
-								 Relation target_relation);
+                                 RangeTblEntry *target_rte,
+                                 Relation target_relation);
 
 static List *multicornPlanForeignModify(PlannerInfo *root,
-						   ModifyTable *plan,
-						   Index resultRelation,
-						   int subplan_index);
+                           ModifyTable *plan,
+                           Index resultRelation,
+                           int subplan_index);
 static void multicornBeginForeignModify(ModifyTableState *mtstate,
-							ResultRelInfo *resultRelInfo,
-							List *fdw_private,
-							int subplan_index,
-							int eflags);
+                            ResultRelInfo *resultRelInfo,
+                            List *fdw_private,
+                            int subplan_index,
+                            int eflags);
 static TupleTableSlot *multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot,
-						   TupleTableSlot *planslot);
+                           TupleTableSlot *slot,
+                           TupleTableSlot *planslot);
 static TupleTableSlot *multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot, TupleTableSlot *planSlot);
+                           TupleTableSlot *slot, TupleTableSlot *planSlot);
 static TupleTableSlot *multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot, TupleTableSlot *planSlot);
+                           TupleTableSlot *slot, TupleTableSlot *planSlot);
 static void multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo);
 
 #if PG_VERSION_NUM >= 140000
 static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
-							ResultRelInfo *rinfo,
-							TupleTableSlot **slots,
-							TupleTableSlot **planSlots,
-							int *numSlots);
+                            ResultRelInfo *rinfo,
+                            TupleTableSlot **slots,
+                            TupleTableSlot **planSlots,
+                            int *numSlots);
 static int multicornGetForeignModifyBatchSize(ResultRelInfo *rinfo);
 #endif
 
 static void multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
-						   SubTransactionId parentSubid, void *arg);
+                           SubTransactionId parentSubid, void *arg);
 
 static List *multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
-							 Oid serverOid);
+                             Oid serverOid);
 
 static void multicorn_xact_callback(XactEvent event, void *arg);
 
@@ -121,126 +123,136 @@ MulticornExecState *initializeExecState(void *internal_plan_state);
 /* Hash table mapping oid to fdw instances */
 HTAB	   *InstancesHash;
 
+/* Global query counter */
+static pg_atomic_uint64 global_query_counter;
+
 
 void
 _PG_init()
 {
-	HASHCTL		ctl;
-	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
-	bool need_import_plpy = false;
+    HASHCTL		ctl;
+    MemoryContext oldctx;
+    bool need_import_plpy;
 
-	/* Try to load plpython3 with its own module */
-	PG_TRY();
-	{
-	void * PyInit_plpy = load_external_function("plpython3", "PyInit_plpy", true, NULL);
-	PyImport_AppendInittab("plpy", PyInit_plpy);
-	need_import_plpy = true;
-	}
-	PG_CATCH();
-	{
-		need_import_plpy = false;
-	}
-	PG_END_TRY();
-	Py_Initialize();
-	if (need_import_plpy)
-		PyImport_ImportModule("plpy");
-	RegisterXactCallback(multicorn_xact_callback, NULL);
-	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
-	/* Initialize the global oid -> python instances hash */
-	MemSet(&ctl, 0, sizeof(ctl));
-	ctl.keysize = sizeof(Oid);
-	ctl.entrysize = sizeof(CacheEntry);
-	ctl.hash = oid_hash;
-	ctl.hcxt = CacheMemoryContext;
-	InstancesHash = hash_create("multicorn instances", 32,
-								&ctl,
-								HASH_ELEM | HASH_FUNCTION);
-	MemoryContextSwitchTo(oldctx);
+    /* Initialize the global query counter */
+    pg_atomic_init_u64(&global_query_counter, 0);
+
+    oldctx = MemoryContextSwitchTo(CacheMemoryContext);
+    need_import_plpy = false;
+
+    /* Try to load plpython3 with its own module */
+    PG_TRY();
+    {
+    void * PyInit_plpy = load_external_function("plpython3", "PyInit_plpy", true, NULL);
+    PyImport_AppendInittab("plpy", PyInit_plpy);
+    need_import_plpy = true;
+    }
+    PG_CATCH();
+    {
+        need_import_plpy = false;
+    }
+    PG_END_TRY();
+    Py_Initialize();
+    if (need_import_plpy)
+        PyImport_ImportModule("plpy");
+    RegisterXactCallback(multicorn_xact_callback, NULL);
+    RegisterSubXactCallback(multicorn_subxact_callback, NULL);
+    /* Initialize the global oid -> python instances hash */
+    MemSet(&ctl, 0, sizeof(ctl));
+    ctl.keysize = sizeof(Oid);
+    ctl.entrysize = sizeof(CacheEntry);
+    ctl.hash = oid_hash;
+    ctl.hcxt = CacheMemoryContext;
+    InstancesHash = hash_create("multicorn instances", 32,
+                                &ctl,
+                                HASH_ELEM | HASH_FUNCTION);
+    MemoryContextSwitchTo(oldctx);
 }
 
 void
 _PG_fini()
 {
-	Py_Finalize();
+    
+    Py_Finalize();
 }
 
 
 Datum
 multicorn_handler(PG_FUNCTION_ARGS)
 {
-	FdwRoutine *fdw_routine = makeNode(FdwRoutine);
+    FdwRoutine *fdw_routine = makeNode(FdwRoutine);
 
-	/* Plan phase */
-	fdw_routine->GetForeignRelSize = multicornGetForeignRelSize;
-	fdw_routine->GetForeignPaths = multicornGetForeignPaths;
-	fdw_routine->GetForeignPlan = multicornGetForeignPlan;
-	fdw_routine->ExplainForeignScan = multicornExplainForeignScan;
+    /* Plan phase */
+    fdw_routine->GetForeignRelSize = multicornGetForeignRelSize;
+    fdw_routine->GetForeignPaths = multicornGetForeignPaths;
+    fdw_routine->GetForeignPlan = multicornGetForeignPlan;
+    fdw_routine->ExplainForeignScan = multicornExplainForeignScan;
 
-	/* Scan phase */
-	fdw_routine->BeginForeignScan = multicornBeginForeignScan;
-	fdw_routine->IterateForeignScan = multicornIterateForeignScan;
-	fdw_routine->ReScanForeignScan = multicornReScanForeignScan;
-	fdw_routine->EndForeignScan = multicornEndForeignScan;
+    /* Scan phase */
+    fdw_routine->BeginForeignScan = multicornBeginForeignScan;
+    fdw_routine->IterateForeignScan = multicornIterateForeignScan;
+    fdw_routine->ReScanForeignScan = multicornReScanForeignScan;
+    fdw_routine->EndForeignScan = multicornEndForeignScan;
 
-	fdw_routine->AddForeignUpdateTargets = multicornAddForeignUpdateTargets;
-	/* Writable API */
-	fdw_routine->PlanForeignModify = multicornPlanForeignModify;
-	fdw_routine->BeginForeignModify = multicornBeginForeignModify;
-	fdw_routine->ExecForeignInsert = multicornExecForeignInsert;
-	fdw_routine->ExecForeignDelete = multicornExecForeignDelete;
-	fdw_routine->ExecForeignUpdate = multicornExecForeignUpdate;
-	fdw_routine->EndForeignModify = multicornEndForeignModify;
+    fdw_routine->AddForeignUpdateTargets = multicornAddForeignUpdateTargets;
+    /* Writable API */
+    fdw_routine->PlanForeignModify = multicornPlanForeignModify;
+    fdw_routine->BeginForeignModify = multicornBeginForeignModify;
+    fdw_routine->ExecForeignInsert = multicornExecForeignInsert;
+    fdw_routine->ExecForeignDelete = multicornExecForeignDelete;
+    fdw_routine->ExecForeignUpdate = multicornExecForeignUpdate;
+    fdw_routine->EndForeignModify = multicornEndForeignModify;
 
 #if PG_VERSION_NUM >= 140000
-	fdw_routine->GetForeignModifyBatchSize = multicornGetForeignModifyBatchSize;
-	fdw_routine->ExecForeignBatchInsert = multicornExecForeignBatchInsert;
+    fdw_routine->GetForeignModifyBatchSize = multicornGetForeignModifyBatchSize;
+    fdw_routine->ExecForeignBatchInsert = multicornExecForeignBatchInsert;
 #endif
 
-	fdw_routine->ImportForeignSchema = multicornImportForeignSchema;
+    fdw_routine->ImportForeignSchema = multicornImportForeignSchema;
 
-	PG_RETURN_POINTER(fdw_routine);
+    PG_RETURN_POINTER(fdw_routine);
 }
 
 Datum
 multicorn_validator(PG_FUNCTION_ARGS)
 {
-	List	   *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
-	Oid			catalog = PG_GETARG_OID(1);
-	char	   *className = NULL;
-	ListCell   *cell;
-	PyObject   *p_class;
+    List	   *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
+    Oid			catalog = PG_GETARG_OID(1);
+    char	   *className = NULL;
+    ListCell   *cell;
+    PyObject   *p_class;
 
-	foreach(cell, options_list)
-	{
-		DefElem    *def = (DefElem *) lfirst(cell);
+    foreach(cell, options_list)
+    {
+        DefElem    *def = (DefElem *) lfirst(cell);
 
-		if (strcmp(def->defname, "wrapper") == 0)
-		{
-			/* Only at server creation can we set the wrapper,	*/
-			/* for security issues. */
-			if (catalog == ForeignTableRelationId)
-			{
-				ereport(ERROR, (errmsg("%s", "Cannot set the wrapper class on the table"),
-								errhint("%s", "Set it on the server")));
-			}
-			else
-			{
-				className = (char *) defGetString(def);
-			}
-		}
-	}
-	if (catalog == ForeignServerRelationId)
-	{
-		if (className == NULL)
-		{
-			ereport(ERROR, (errmsg("%s", "The wrapper parameter is mandatory, specify a valid class name")));
-		}
-		/* Try to import the class. */
-		p_class = getClassString(className);
-		errorCheck();
-		Py_DECREF(p_class);
-	}
-	PG_RETURN_VOID();
+        if (strcmp(def->defname, "wrapper") == 0)
+        {
+            /* Only at server creation can we set the wrapper,	*/
+            /* for security issues. */
+            if (catalog == ForeignTableRelationId)
+            {
+                ereport(ERROR, (errmsg("%s", "Cannot set the wrapper class on the table"),
+                                errhint("%s", "Set it on the server")));
+            }
+            else
+            {
+                className = (char *) defGetString(def);
+            }
+        }
+    }
+    if (catalog == ForeignServerRelationId)
+    {
+        if (className == NULL)
+        {
+            ereport(ERROR, (errmsg("%s", "The wrapper parameter is mandatory, specify a valid class name")));
+        }
+        /* Try to import the class. */
+        p_class = getClassString(className);
+        errorCheck();
+        Py_DECREF(p_class);
+    }
+    PG_RETURN_VOID();
 }
 
 
@@ -251,85 +263,93 @@ multicorn_validator(PG_FUNCTION_ARGS)
  */
 static void
 multicornGetForeignRelSize(PlannerInfo *root,
-						   RelOptInfo *baserel,
-						   Oid foreigntableid)
+                           RelOptInfo *baserel,
+                           Oid foreigntableid)
 {
-	MulticornPlanState *planstate = palloc0(sizeof(MulticornPlanState));
-	ForeignTable *ftable = GetForeignTable(foreigntableid);
-	ListCell   *lc;
-	bool		needWholeRow = false;
-	TupleDesc	desc;
+    MulticornPlanState *planstate = palloc0(sizeof(MulticornPlanState));
+    ForeignTable *ftable = GetForeignTable(foreigntableid);
+    ListCell   *lc;
+    bool		needWholeRow = false;
+    TupleDesc	desc;
 
-	baserel->fdw_private = planstate;
-	planstate->fdw_instance = getInstance(foreigntableid);
-	planstate->foreigntableid = foreigntableid;
-	/* Initialize the conversion info array */
-	{
-		Relation	rel = RelationIdGetRelation(ftable->relid);
-		AttInMetadata *attinmeta;
+    baserel->fdw_private = planstate;
+    planstate->fdw_instance = getInstance(foreigntableid);
+    planstate->foreigntableid = foreigntableid;
+    /* Set the LIMIT clause if passed */
+    if (root->limit_tuples > 0) {
+        planstate->limit = root->limit_tuples;
+    } else {
+        planstate->limit = -1; // No LIMIT clause
+    }
+    /* Set the unique plan identifier */
+    planstate->plan_id = pg_atomic_fetch_add_u64(&global_query_counter, 1);
+    /* Initialize the conversion info array */
+    {
+        Relation	rel = RelationIdGetRelation(ftable->relid);
+        AttInMetadata *attinmeta;
 
-		desc = RelationGetDescr(rel);
-		attinmeta = TupleDescGetAttInMetadata(desc);
-		planstate->numattrs = RelationGetNumberOfAttributes(rel);
+        desc = RelationGetDescr(rel);
+        attinmeta = TupleDescGetAttInMetadata(desc);
+        planstate->numattrs = RelationGetNumberOfAttributes(rel);
 
-		planstate->cinfos = palloc0(sizeof(ConversionInfo *) *
-									planstate->numattrs);
-		initConversioninfo(planstate->cinfos, attinmeta);
-		needWholeRow = rel->trigdesc && rel->trigdesc->trig_insert_after_row;
-		RelationClose(rel);
-	}
-	if (needWholeRow)
-	{
-		int			i;
+        planstate->cinfos = palloc0(sizeof(ConversionInfo *) *
+                                    planstate->numattrs);
+        initConversioninfo(planstate->cinfos, attinmeta);
+        needWholeRow = rel->trigdesc && rel->trigdesc->trig_insert_after_row;
+        RelationClose(rel);
+    }
+    if (needWholeRow)
+    {
+        int			i;
 
-		for (i = 0; i < desc->natts; i++)
-		{
-			Form_pg_attribute att = TupleDescAttr(desc, i);
+        for (i = 0; i < desc->natts; i++)
+        {
+            Form_pg_attribute att = TupleDescAttr(desc, i);
 
-			if (!att->attisdropped)
-			{
-				planstate->target_list = lappend(planstate->target_list, makeString(NameStr(att->attname)));
-			}
-		}
-	}
-	else
-	{
-		/* Pull "var" clauses to build an appropriate target list */
-		foreach(lc, extractColumns(baserel->reltarget->exprs, baserel->baserestrictinfo))
-		{
-			Var		   *var = (Var *) lfirst(lc);
+            if (!att->attisdropped)
+            {
+                planstate->target_list = lappend(planstate->target_list, makeString(NameStr(att->attname)));
+            }
+        }
+    }
+    else
+    {
+        /* Pull "var" clauses to build an appropriate target list */
+        foreach(lc, extractColumns(baserel->reltarget->exprs, baserel->baserestrictinfo))
+        {
+            Var		   *var = (Var *) lfirst(lc);
 #if PG_VERSION_NUM < 150000
-			Value	   *colname;
+            Value	   *colname;
 #else
-			String	   *colname;
+            String	   *colname;
 #endif
 
-			/*
-			 * Store only a Value node containing the string name of the
-			 * column.
-			 */
-			colname = colnameFromVar(var, root, planstate);
-			if (colname != NULL && strVal(colname) != NULL)
-			{
-				planstate->target_list = lappend(planstate->target_list, colname);
-			}
-		}
-	}
-	/* Extract the restrictions from the plan. */
-	foreach(lc, baserel->baserestrictinfo)
-	{
-		extractRestrictions(
+            /*
+             * Store only a Value node containing the string name of the
+             * column.
+             */
+            colname = colnameFromVar(var, root, planstate);
+            if (colname != NULL && strVal(colname) != NULL)
+            {
+                planstate->target_list = lappend(planstate->target_list, colname);
+            }
+        }
+    }
+    /* Extract the restrictions from the plan. */
+    foreach(lc, baserel->baserestrictinfo)
+    {
+        extractRestrictions(
 #if PG_VERSION_NUM >= 140000
-			root,
+            root,
 #endif
-			baserel->relids,
-			((RestrictInfo *) lfirst(lc))->clause,
-			&planstate->qual_list);
+            baserel->relids,
+            ((RestrictInfo *) lfirst(lc))->clause,
+            &planstate->qual_list);
 
-	}
-	/* Inject the "rows" and "width" attribute into the baserel */
-	getRelSize(planstate, root, &baserel->rows, &baserel->reltarget->width);
-	planstate->width = baserel->reltarget->width;
+    }
+    /* Inject the "rows" and "width" attribute into the baserel */
+    getRelSize(planstate, root, &baserel->rows, &baserel->reltarget->width);
+    planstate->width = baserel->reltarget->width;
 }
 
 /*
@@ -341,80 +361,80 @@ multicornGetForeignRelSize(PlannerInfo *root,
  */
 static void
 multicornGetForeignPaths(PlannerInfo *root,
-						 RelOptInfo *baserel,
-						 Oid foreigntableid)
+                         RelOptInfo *baserel,
+                         Oid foreigntableid)
 {
-	List				*pathes; /* List of ForeignPath */
-	MulticornPlanState	*planstate = baserel->fdw_private;
-	ListCell		    *lc;
+    List				*pathes; /* List of ForeignPath */
+    MulticornPlanState	*planstate = baserel->fdw_private;
+    ListCell		    *lc;
 
-	/* These lists are used to handle sort pushdown */
-	List				*apply_pathkeys = NULL;
-	List				*deparsed_pathkeys = NULL;
+    /* These lists are used to handle sort pushdown */
+    List				*apply_pathkeys = NULL;
+    List				*deparsed_pathkeys = NULL;
 
-	/* Extract a friendly version of the pathkeys. */
-	List	   *possiblePaths = pathKeys(planstate);
+    /* Extract a friendly version of the pathkeys. */
+    List	   *possiblePaths = pathKeys(planstate);
 
-	/* Try to find parameterized paths */
-	pathes = findPaths(root, baserel, possiblePaths, planstate->startupCost,
-			planstate, apply_pathkeys, deparsed_pathkeys);
+    /* Try to find parameterized paths */
+    pathes = findPaths(root, baserel, possiblePaths, planstate->startupCost,
+            planstate, apply_pathkeys, deparsed_pathkeys);
 
-	/* Add a simple default path */
-	pathes = lappend(pathes, create_foreignscan_path(root, baserel,
-		 	NULL,  /* default pathtarget */
-			baserel->rows,
-			planstate->startupCost,
-			baserel->rows * baserel->reltarget->width,
-			NIL,		/* no pathkeys */
-			NULL,
-			NULL,
+    /* Add a simple default path */
+    pathes = lappend(pathes, create_foreignscan_path(root, baserel,
+             NULL,  /* default pathtarget */
+            baserel->rows,
+            planstate->startupCost,
+            baserel->rows * baserel->reltarget->width,
+            NIL,		/* no pathkeys */
+            NULL,
+            NULL,
 #if PG_VERSION_NUM >= 170000
-			NULL,
+            NULL,
 #endif
-			NULL));
+            NULL));
 
-	/* Handle sort pushdown */
-	if (root->query_pathkeys)
-	{
-		List		*deparsed = deparse_sortgroup(root, foreigntableid, baserel);
+    /* Handle sort pushdown */
+    if (root->query_pathkeys)
+    {
+        List		*deparsed = deparse_sortgroup(root, foreigntableid, baserel);
 
-		if (deparsed)
-		{
-			/* Update the sort_*_pathkeys lists if needed */
-			computeDeparsedSortGroup(deparsed, planstate, &apply_pathkeys,
-					&deparsed_pathkeys);
-		}
-	}
+        if (deparsed)
+        {
+            /* Update the sort_*_pathkeys lists if needed */
+            computeDeparsedSortGroup(deparsed, planstate, &apply_pathkeys,
+                    &deparsed_pathkeys);
+        }
+    }
 
-	/* Add each ForeignPath previously found */
-	foreach(lc, pathes)
-	{
-		ForeignPath *path = (ForeignPath *) lfirst(lc);
+    /* Add each ForeignPath previously found */
+    foreach(lc, pathes)
+    {
+        ForeignPath *path = (ForeignPath *) lfirst(lc);
 
-		/* Add the path without modification */
-		add_path(baserel, (Path *) path);
+        /* Add the path without modification */
+        add_path(baserel, (Path *) path);
 
-		/* Add the path with sort pusdown if possible */
-		if (apply_pathkeys && deparsed_pathkeys)
-		{
-			ForeignPath *newpath;
+        /* Add the path with sort pusdown if possible */
+        if (apply_pathkeys && deparsed_pathkeys)
+        {
+            ForeignPath *newpath;
 
-			newpath = create_foreignscan_path(root, baserel,
-					NULL,  /* default pathtarget */
-					path->path.rows,
-					path->path.startup_cost, path->path.total_cost,
-					apply_pathkeys, NULL,
-					NULL,
+            newpath = create_foreignscan_path(root, baserel,
+                    NULL,  /* default pathtarget */
+                    path->path.rows,
+                    path->path.startup_cost, path->path.total_cost,
+                    apply_pathkeys, NULL,
+                    NULL,
 #if PG_VERSION_NUM >= 170000
-					NULL,
+                    NULL,
 #endif
-					(void *) deparsed_pathkeys);
+                    (void *) deparsed_pathkeys);
 
-			newpath->path.param_info = path->path.param_info;
-			add_path(baserel, (Path *) newpath);
-		}
-	}
-	errorCheck();
+            newpath->path.param_info = path->path.param_info;
+            add_path(baserel, (Path *) newpath);
+        }
+    }
+    errorCheck();
 }
 
 /*
@@ -423,44 +443,44 @@ multicornGetForeignPaths(PlannerInfo *root,
  */
 static ForeignScan *
 multicornGetForeignPlan(PlannerInfo *root,
-						RelOptInfo *baserel,
-						Oid foreigntableid,
-						ForeignPath *best_path,
-						List *tlist,
-						List *scan_clauses
-						, Plan *outer_plan
-		)
+                        RelOptInfo *baserel,
+                        Oid foreigntableid,
+                        ForeignPath *best_path,
+                        List *tlist,
+                        List *scan_clauses
+                        , Plan *outer_plan
+        )
 {
-	Index		scan_relid = baserel->relid;
-	MulticornPlanState *planstate = (MulticornPlanState *) baserel->fdw_private;
-	ListCell   *lc;
-	best_path->path.pathtarget->width = planstate->width;
-	scan_clauses = extract_actual_clauses(scan_clauses, false);
-	/* Extract the quals coming from a parameterized path, if any */
-	if (best_path->path.param_info)
-	{
+    Index		scan_relid = baserel->relid;
+    MulticornPlanState *planstate = (MulticornPlanState *) baserel->fdw_private;
+    ListCell   *lc;
+    best_path->path.pathtarget->width = planstate->width;
+    scan_clauses = extract_actual_clauses(scan_clauses, false);
+    /* Extract the quals coming from a parameterized path, if any */
+    if (best_path->path.param_info)
+    {
 
-		foreach(lc, scan_clauses)
-		{
-			extractRestrictions(
+        foreach(lc, scan_clauses)
+        {
+            extractRestrictions(
 #if PG_VERSION_NUM >= 140000
-				root,
+                root,
 #endif
-				baserel->relids,
-				(Expr *) lfirst(lc),
-				&planstate->qual_list);
-		}
-	}
-	planstate->pathkeys = (List *) best_path->fdw_private;
-	return make_foreignscan(tlist,
-							scan_clauses,
-							scan_relid,
-							scan_clauses,		/* no expressions to evaluate */
-							serializePlanState(planstate)
-							, NULL
-							, NULL /* All quals are meant to be rechecked */
-							, NULL
-							);
+                baserel->relids,
+                (Expr *) lfirst(lc),
+                &planstate->qual_list);
+        }
+    }
+    planstate->pathkeys = (List *) best_path->fdw_private;
+    return make_foreignscan(tlist,
+                            scan_clauses,
+                            scan_relid,
+                            scan_clauses,		/* no expressions to evaluate */
+                            serializePlanState(planstate)
+                            , NULL
+                            , NULL /* All quals are meant to be rechecked */
+                            , NULL
+                            );
 }
 
 /*
@@ -472,17 +492,17 @@ multicornGetForeignPlan(PlannerInfo *root,
 static void
 multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 {
-	PyObject *p_iterable = execute(node, es),
-			 *p_item,
-			 *p_str;
-	Py_INCREF(p_iterable);
-	while((p_item = PyIter_Next(p_iterable))){
-		p_str = PyObject_Str(p_item);
-		ExplainPropertyText("Multicorn", PyString_AsString(p_str), es);
-		Py_DECREF(p_str);
-	}
-	Py_DECREF(p_iterable);
-	errorCheck();
+    PyObject *p_iterable = execute(node, es),
+             *p_item,
+             *p_str;
+    Py_INCREF(p_iterable);
+    while((p_item = PyIter_Next(p_iterable))){
+        p_str = PyObject_Str(p_item);
+        ExplainPropertyText("Multicorn", PyString_AsString(p_str), es);
+        Py_DECREF(p_str);
+    }
+    Py_DECREF(p_iterable);
+    errorCheck();
 }
 
 /*
@@ -495,29 +515,29 @@ multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 static void
 multicornBeginForeignScan(ForeignScanState *node, int eflags)
 {
-	ForeignScan *fscan = (ForeignScan *) node->ss.ps.plan;
-	MulticornExecState *execstate;
-	TupleDesc	tupdesc = RelationGetDescr(node->ss.ss_currentRelation);
-	ListCell   *lc;
-	elog(DEBUG3, "starting BeginForeignScan()");
+    ForeignScan *fscan = (ForeignScan *) node->ss.ps.plan;
+    MulticornExecState *execstate;
+    TupleDesc	tupdesc = RelationGetDescr(node->ss.ss_currentRelation);
+    ListCell   *lc;
+    elog(DEBUG3, "starting BeginForeignScan()");
 
-	execstate = initializeExecState(fscan->fdw_private);
-	execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
-	execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
-	execstate->qual_list = NULL;
-	foreach(lc, fscan->fdw_exprs)
-	{
-		elog(DEBUG3, "looping in beginForeignScan()");
-		extractRestrictions(
+    execstate = initializeExecState(fscan->fdw_private);
+    execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
+    execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
+    execstate->qual_list = NULL;
+    foreach(lc, fscan->fdw_exprs)
+    {
+        elog(DEBUG3, "looping in beginForeignScan()");
+        extractRestrictions(
 #if PG_VERSION_NUM >= 140000
 NULL,
 #endif
 bms_make_singleton(fscan->scan.scanrelid),
-							((Expr *) lfirst(lc)),
-							&execstate->qual_list);
-	}
-	initConversioninfo(execstate->cinfos, TupleDescGetAttInMetadata(tupdesc));
-	node->fdw_state = execstate;
+                            ((Expr *) lfirst(lc)),
+                            &execstate->qual_list);
+    }
+    initConversioninfo(execstate->cinfos, TupleDescGetAttInMetadata(tupdesc));
+    node->fdw_state = execstate;
 }
 
 
@@ -532,36 +552,36 @@ bms_make_singleton(fscan->scan.scanrelid),
 static TupleTableSlot *
 multicornIterateForeignScan(ForeignScanState *node)
 {
-	TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
-	MulticornExecState *execstate = node->fdw_state;
-	PyObject   *p_value;
+    TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
+    MulticornExecState *execstate = node->fdw_state;
+    PyObject   *p_value;
 
-	if (execstate->p_iterator == NULL)
-	{
-		execute(node, NULL);
-	}
-	ExecClearTuple(slot);
-	if (execstate->p_iterator == Py_None)
-	{
-		/* No iterator returned from get_iterator */
-		Py_DECREF(execstate->p_iterator);
-		return slot;
-	}
-	p_value = PyIter_Next(execstate->p_iterator);
-	errorCheck();
-	/* A none value results in an empty slot. */
-	if (p_value == NULL || p_value == Py_None)
-	{
-		Py_XDECREF(p_value);
-		return slot;
-	}
-	slot->tts_values = execstate->values;
-	slot->tts_isnull = execstate->nulls;
-	pythonResultToTuple(p_value, slot, execstate->cinfos, execstate->buffer);
-	ExecStoreVirtualTuple(slot);
-	Py_DECREF(p_value);
+    if (execstate->p_iterator == NULL)
+    {
+        execute(node, NULL);
+    }
+    ExecClearTuple(slot);
+    if (execstate->p_iterator == Py_None)
+    {
+        /* No iterator returned from get_iterator */
+        Py_DECREF(execstate->p_iterator);
+        return slot;
+    }
+    p_value = PyIter_Next(execstate->p_iterator);
+    errorCheck();
+    /* A none value results in an empty slot. */
+    if (p_value == NULL || p_value == Py_None)
+    {
+        Py_XDECREF(p_value);
+        return slot;
+    }
+    slot->tts_values = execstate->values;
+    slot->tts_isnull = execstate->nulls;
+    pythonResultToTuple(p_value, slot, execstate->cinfos, execstate->buffer);
+    ExecStoreVirtualTuple(slot);
+    Py_DECREF(p_value);
 
-	return slot;
+    return slot;
 }
 
 /*
@@ -571,13 +591,13 @@ multicornIterateForeignScan(ForeignScanState *node)
 static void
 multicornReScanForeignScan(ForeignScanState *node)
 {
-	MulticornExecState *state = node->fdw_state;
+    MulticornExecState *state = node->fdw_state;
 
-	if (state->p_iterator)
-	{
-		Py_DECREF(state->p_iterator);
-		state->p_iterator = NULL;
-	}
+    if (state->p_iterator)
+    {
+        Py_DECREF(state->p_iterator);
+        state->p_iterator = NULL;
+    }
 }
 
 /*
@@ -587,14 +607,14 @@ multicornReScanForeignScan(ForeignScanState *node)
 static void
 multicornEndForeignScan(ForeignScanState *node)
 {
-	MulticornExecState *state = node->fdw_state;
-	PyObject   *result = PyObject_CallMethod(state->fdw_instance, "end_scan", "()");
+    MulticornExecState *state = node->fdw_state;
+    PyObject   *result = PyObject_CallMethod(state->fdw_instance, "end_scan", "()");
 
-	errorCheck();
-	Py_DECREF(result);
-	Py_DECREF(state->fdw_instance);
-	Py_XDECREF(state->p_iterator);
-	state->p_iterator = NULL;
+    errorCheck();
+    Py_DECREF(result);
+    Py_DECREF(state->fdw_instance);
+    Py_XDECREF(state->p_iterator);
+    state->p_iterator = NULL;
 }
 
 
@@ -606,101 +626,101 @@ multicornEndForeignScan(ForeignScanState *node)
 static void
 multicornAddForeignUpdateTargets(
 #if PG_VERSION_NUM >= 140000
-								 PlannerInfo *root,
-								 Index rtindex,
+                                 PlannerInfo *root,
+                                 Index rtindex,
 #else
-								 Query *parsetree,
+                                 Query *parsetree,
 #endif
-								 RangeTblEntry *target_rte,
-								 Relation target_relation)
+                                 RangeTblEntry *target_rte,
+                                 Relation target_relation)
 {
-	Var		   *var = NULL;
-	TargetEntry *tle,
-			   *returningTle;
-	PyObject   *instance = getInstance(target_relation->rd_id);
-	const char *attrname = getRowIdColumn(instance);
-	TupleDesc	desc = target_relation->rd_att;
-	int			i;
-	ListCell   *cell;
+    Var		   *var = NULL;
+    TargetEntry *tle,
+               *returningTle;
+    PyObject   *instance = getInstance(target_relation->rd_id);
+    const char *attrname = getRowIdColumn(instance);
+    TupleDesc	desc = target_relation->rd_att;
+    int			i;
+    ListCell   *cell;
 #if PG_VERSION_NUM >= 140000
-	Query *parsetree = root->parse;
+    Query *parsetree = root->parse;
 #endif
 
 #if PG_VERSION_NUM >= 140000
-	if (root->parse->commandType == CMD_UPDATE)
-	{
-		// In order to maintain backward compatibility with behavior prior to PG14, during an UPDATE we ensure that we
-		// fetch all columns from the table to provide them to the `update()` method.  This could be made more efficient
-		// in the future if multicornExecForeignUpdate() was modified to call `update()` with only the columns that have
-		// been changed, but it might be a compatibility problem for existing FDWs.
+    if (root->parse->commandType == CMD_UPDATE)
+    {
+        // In order to maintain backward compatibility with behavior prior to PG14, during an UPDATE we ensure that we
+        // fetch all columns from the table to provide them to the `update()` method.  This could be made more efficient
+        // in the future if multicornExecForeignUpdate() was modified to call `update()` with only the columns that have
+        // been changed, but it might be a compatibility problem for existing FDWs.
 
-		for (i = 0; i < desc->natts; i++)
-		{
-			Form_pg_attribute att = TupleDescAttr(desc, i);
+        for (i = 0; i < desc->natts; i++)
+        {
+            Form_pg_attribute att = TupleDescAttr(desc, i);
 
-			if (!att->attisdropped)
-			{
-				var = makeVar(rtindex,
-							att->attnum,
-							att->atttypid,
-							att->atttypmod,
-							att->attcollation,
-							0);
-				add_row_identity_var(root, var, rtindex, strdup(NameStr(att->attname)));
-			}
-		}
+            if (!att->attisdropped)
+            {
+                var = makeVar(rtindex,
+                            att->attnum,
+                            att->atttypid,
+                            att->atttypmod,
+                            att->attcollation,
+                            0);
+                add_row_identity_var(root, var, rtindex, strdup(NameStr(att->attname)));
+            }
+        }
 
-		return;
-	}
+        return;
+    }
 #endif
 
-	foreach(cell, parsetree->returningList)
-	{
-		returningTle = lfirst(cell);
-		tle = copyObject(returningTle);
-		tle->resjunk = true;
+    foreach(cell, parsetree->returningList)
+    {
+        returningTle = lfirst(cell);
+        tle = copyObject(returningTle);
+        tle->resjunk = true;
 #if PG_VERSION_NUM >= 140000
-		add_row_identity_var(root, (Var *)tle->expr, rtindex, strdup(tle->resname));
+        add_row_identity_var(root, (Var *)tle->expr, rtindex, strdup(tle->resname));
 #else
-		parsetree->targetList = lappend(parsetree->targetList, tle);
+        parsetree->targetList = lappend(parsetree->targetList, tle);
 #endif
-	}
+    }
 
 
-	for (i = 0; i < desc->natts; i++)
-	{
-		Form_pg_attribute att = TupleDescAttr(desc, i);
+    for (i = 0; i < desc->natts; i++)
+    {
+        Form_pg_attribute att = TupleDescAttr(desc, i);
 
-		if (!att->attisdropped)
-		{
-			if (strcmp(NameStr(att->attname), attrname) == 0)
-			{
-				var = makeVar(parsetree->resultRelation,
-							  att->attnum,
-							  att->atttypid,
-							  att->atttypmod,
-							  att->attcollation,
-							  0);
-				break;
-			}
-		}
-	}
-	if (var == NULL)
-	{
-		ereport(ERROR, (errmsg("%s", "The rowid attribute does not exist")));
-	}
+        if (!att->attisdropped)
+        {
+            if (strcmp(NameStr(att->attname), attrname) == 0)
+            {
+                var = makeVar(parsetree->resultRelation,
+                              att->attnum,
+                              att->atttypid,
+                              att->atttypmod,
+                              att->attcollation,
+                              0);
+                break;
+            }
+        }
+    }
+    if (var == NULL)
+    {
+        ereport(ERROR, (errmsg("%s", "The rowid attribute does not exist")));
+    }
 
 #if PG_VERSION_NUM >= 140000
-	add_row_identity_var(root, var, parsetree->resultRelation, strdup(attrname));
+    add_row_identity_var(root, var, parsetree->resultRelation, strdup(attrname));
 #else
-	tle = makeTargetEntry((Expr *) var,
-						  list_length(parsetree->targetList) + 1,
-						  strdup(attrname),
-						  true);
-	parsetree->targetList = lappend(parsetree->targetList, tle);
+    tle = makeTargetEntry((Expr *) var,
+                          list_length(parsetree->targetList) + 1,
+                          strdup(attrname),
+                          true);
+    parsetree->targetList = lappend(parsetree->targetList, tle);
 #endif
 
-	Py_DECREF(instance);
+    Py_DECREF(instance);
 }
 
 
@@ -712,11 +732,11 @@ multicornAddForeignUpdateTargets(
  */
 static List *
 multicornPlanForeignModify(PlannerInfo *root,
-						   ModifyTable *plan,
-						   Index resultRelation,
-						   int subplan_index)
+                           ModifyTable *plan,
+                           Index resultRelation,
+                           int subplan_index)
 {
-	return NULL;
+    return NULL;
 }
 
 
@@ -726,55 +746,55 @@ multicornPlanForeignModify(PlannerInfo *root,
  */
 static void
 multicornBeginForeignModify(ModifyTableState *mtstate,
-							ResultRelInfo *resultRelInfo,
-							List *fdw_private,
-							int subplan_index,
-							int eflags)
+                            ResultRelInfo *resultRelInfo,
+                            List *fdw_private,
+                            int subplan_index,
+                            int eflags)
 {
-	MulticornModifyState *modstate = palloc0(sizeof(MulticornModifyState));
-	Relation	rel = resultRelInfo->ri_RelationDesc;
-	TupleDesc	desc = RelationGetDescr(rel);
-	PlanState  *ps =
+    MulticornModifyState *modstate = palloc0(sizeof(MulticornModifyState));
+    Relation	rel = resultRelInfo->ri_RelationDesc;
+    TupleDesc	desc = RelationGetDescr(rel);
+    PlanState  *ps =
 #if PG_VERSION_NUM >= 140000
-		outerPlanState(mtstate);
+        outerPlanState(mtstate);
 #else
-		mtstate->mt_plans[subplan_index];
+        mtstate->mt_plans[subplan_index];
 #endif
-	Plan	   *subplan = ps->plan;
-	MemoryContext oldcontext;
-	int			i;
+    Plan	   *subplan = ps->plan;
+    MemoryContext oldcontext;
+    int			i;
 
-	modstate->cinfos = palloc0(sizeof(ConversionInfo *) *
-							   desc->natts);
-	modstate->buffer = makeStringInfo();
-	modstate->fdw_instance = getInstance(rel->rd_id);
-	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
-	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
-	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
-	MemoryContextSwitchTo(oldcontext);
-	if (ps->ps_ResultTupleSlot)
-	{
-		TupleDesc	resultTupleDesc = ps->ps_ResultTupleSlot->tts_tupleDescriptor;
+    modstate->cinfos = palloc0(sizeof(ConversionInfo *) *
+                               desc->natts);
+    modstate->buffer = makeStringInfo();
+    modstate->fdw_instance = getInstance(rel->rd_id);
+    modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
+    initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
+    oldcontext = MemoryContextSwitchTo(TopMemoryContext);
+    MemoryContextSwitchTo(oldcontext);
+    if (ps->ps_ResultTupleSlot)
+    {
+        TupleDesc	resultTupleDesc = ps->ps_ResultTupleSlot->tts_tupleDescriptor;
 
-		modstate->resultCinfos = palloc0(sizeof(ConversionInfo *) *
-										 resultTupleDesc->natts);
-		initConversioninfo(modstate->resultCinfos, TupleDescGetAttInMetadata(resultTupleDesc));
-	}
-	for (i = 0; i < desc->natts; i++)
-	{
-		Form_pg_attribute att = TupleDescAttr(desc, i);
+        modstate->resultCinfos = palloc0(sizeof(ConversionInfo *) *
+                                         resultTupleDesc->natts);
+        initConversioninfo(modstate->resultCinfos, TupleDescGetAttInMetadata(resultTupleDesc));
+    }
+    for (i = 0; i < desc->natts; i++)
+    {
+        Form_pg_attribute att = TupleDescAttr(desc, i);
 
-		if (!att->attisdropped)
-		{
-			if (strcmp(NameStr(att->attname), modstate->rowidAttrName) == 0)
-			{
-				modstate->rowidCinfo = modstate->cinfos[i];
-				break;
-			}
-		}
-	}
-	modstate->rowidAttno = ExecFindJunkAttributeInTlist(subplan->targetlist, modstate->rowidAttrName);
-	resultRelInfo->ri_FdwState = modstate;
+        if (!att->attisdropped)
+        {
+            if (strcmp(NameStr(att->attname), modstate->rowidAttrName) == 0)
+            {
+                modstate->rowidCinfo = modstate->cinfos[i];
+                break;
+            }
+        }
+    }
+    modstate->rowidAttno = ExecFindJunkAttributeInTlist(subplan->targetlist, modstate->rowidAttrName);
+    resultRelInfo->ri_FdwState = modstate;
 }
 
 /*
@@ -784,24 +804,24 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
  */
 static TupleTableSlot *
 multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot, TupleTableSlot *planSlot)
+                           TupleTableSlot *slot, TupleTableSlot *planSlot)
 {
-	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
-	PyObject   *fdw_instance = modstate->fdw_instance;
-	PyObject   *values = tupleTableSlotToPyObject(slot, modstate->cinfos);
-	PyObject   *p_new_value = PyObject_CallMethod(fdw_instance, "insert", "(O)", values);
+    MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
+    PyObject   *fdw_instance = modstate->fdw_instance;
+    PyObject   *values = tupleTableSlotToPyObject(slot, modstate->cinfos);
+    PyObject   *p_new_value = PyObject_CallMethod(fdw_instance, "insert", "(O)", values);
 
-	errorCheck();
-	if (p_new_value && p_new_value != Py_None)
-	{
-		ExecClearTuple(slot);
-		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
-		ExecStoreVirtualTuple(slot);
-	}
-	Py_XDECREF(p_new_value);
-	Py_DECREF(values);
-	errorCheck();
-	return slot;
+    errorCheck();
+    if (p_new_value && p_new_value != Py_None)
+    {
+        ExecClearTuple(slot);
+        pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
+        ExecStoreVirtualTuple(slot);
+    }
+    Py_XDECREF(p_new_value);
+    Py_DECREF(values);
+    errorCheck();
+    return slot;
 }
 
 /*
@@ -812,36 +832,36 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
  */
 static TupleTableSlot *
 multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot, TupleTableSlot *planSlot)
+                           TupleTableSlot *slot, TupleTableSlot *planSlot)
 {
-	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
-	PyObject   *fdw_instance = modstate->fdw_instance,
-			   *p_row_id,
-			   *p_new_value;
-	bool		is_null;
-	ConversionInfo *cinfo = modstate->rowidCinfo;
-	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
+    MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
+    PyObject   *fdw_instance = modstate->fdw_instance,
+               *p_row_id,
+               *p_new_value;
+    bool		is_null;
+    ConversionInfo *cinfo = modstate->rowidCinfo;
+    Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
-	if (modstate->rowidAttno == InvalidAttrNumber)
-	{
-		ereport(ERROR, (errmsg("%s", "The rowid_column could not be identified")));
-	}
+    if (modstate->rowidAttno == InvalidAttrNumber)
+    {
+        ereport(ERROR, (errmsg("%s", "The rowid_column could not be identified")));
+    }
 
-	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
-	p_new_value = PyObject_CallMethod(fdw_instance, "delete", "(O)", p_row_id);
-	errorCheck();
-	if (p_new_value == NULL || p_new_value == Py_None)
-	{
-		Py_XDECREF(p_new_value);
-		p_new_value = tupleTableSlotToPyObject(planSlot, modstate->resultCinfos);
-	}
-	ExecClearTuple(slot);
-	pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
-	ExecStoreVirtualTuple(slot);
-	Py_DECREF(p_new_value);
-	Py_DECREF(p_row_id);
-	errorCheck();
-	return slot;
+    p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
+    p_new_value = PyObject_CallMethod(fdw_instance, "delete", "(O)", p_row_id);
+    errorCheck();
+    if (p_new_value == NULL || p_new_value == Py_None)
+    {
+        Py_XDECREF(p_new_value);
+        p_new_value = tupleTableSlotToPyObject(planSlot, modstate->resultCinfos);
+    }
+    ExecClearTuple(slot);
+    pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
+    ExecStoreVirtualTuple(slot);
+    Py_DECREF(p_new_value);
+    Py_DECREF(p_row_id);
+    errorCheck();
+    return slot;
 }
 
 #if PG_VERSION_NUM >= 140000
@@ -861,13 +881,13 @@ static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
     // Convert all TupleTableSlots to Python objects and append to list
     for (i = 0; i < *numSlots; i++) {
         PyObject *values = tupleTableSlotToPyObject(slots[i], modstate->cinfos);
-		errorCheck();
+        errorCheck();
         if (values == NULL) {
             Py_DECREF(py_slots_list);
             return slots;  // Early exit on conversion failure
         }
         PyList_Append(py_slots_list, values);
-		errorCheck();
+        errorCheck();
         Py_DECREF(values);  // Decrement refcount after adding to list
     }
 
@@ -879,18 +899,18 @@ static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
         if (PyList_Check(p_return_values) && PyList_Size(p_return_values) == *numSlots) {
             for (i = 0; i < *numSlots; i++) {
                 PyObject *p_new_value = PyList_GetItem(p_return_values, i);  // Borrowed reference, no need to DECREF
-				errorCheck();
+                errorCheck();
 
                 ExecClearTuple(slots[i]);
                 pythonResultToTuple(p_new_value, slots[i], modstate->cinfos, modstate->buffer);
-				errorCheck();
+                errorCheck();
 
                 ExecStoreVirtualTuple(slots[i]);
             }
         } else {
             // Error: return values do not match the number of slots provided
-			ereport(ERROR, (errmsg("%s", "Returned list size does not match number of inserted values")));
-		}
+            ereport(ERROR, (errmsg("%s", "Returned list size does not match number of inserted values")));
+        }
     }
 
     Py_XDECREF(p_return_values);
@@ -901,10 +921,10 @@ static TupleTableSlot **multicornExecForeignBatchInsert(EState *estate,
 
 static int multicornGetForeignModifyBatchSize(ResultRelInfo *rinfo)
 {
-	MulticornModifyState *modstate = rinfo->ri_FdwState;
-	PyObject *fdw_instance = modstate->fdw_instance;
-	int batch_size = getModifyBatchSize(fdw_instance);
-	return batch_size;
+    MulticornModifyState *modstate = rinfo->ri_FdwState;
+    PyObject *fdw_instance = modstate->fdw_instance;
+    int batch_size = getModifyBatchSize(fdw_instance);
+    return batch_size;
 }
 
 #endif
@@ -917,36 +937,36 @@ static int multicornGetForeignModifyBatchSize(ResultRelInfo *rinfo)
  */
 static TupleTableSlot *
 multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot, TupleTableSlot *planSlot)
+                           TupleTableSlot *slot, TupleTableSlot *planSlot)
 {
-	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
-	PyObject   *fdw_instance = modstate->fdw_instance,
-			   *p_row_id,
-			   *p_new_value,
-			   *p_value = tupleTableSlotToPyObject(slot, modstate->cinfos);
-	bool		is_null;
-	ConversionInfo *cinfo = modstate->rowidCinfo;
-	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
+    MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
+    PyObject   *fdw_instance = modstate->fdw_instance,
+               *p_row_id,
+               *p_new_value,
+               *p_value = tupleTableSlotToPyObject(slot, modstate->cinfos);
+    bool		is_null;
+    ConversionInfo *cinfo = modstate->rowidCinfo;
+    Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
-	if (modstate->rowidAttno == InvalidAttrNumber)
-	{
-		ereport(ERROR, (errmsg("%s", "The rowid_column could not be identified")));
-	}
+    if (modstate->rowidAttno == InvalidAttrNumber)
+    {
+        ereport(ERROR, (errmsg("%s", "The rowid_column could not be identified")));
+    }
 
-	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
-	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O)", p_row_id,
-									  p_value);
-	errorCheck();
-	if (p_new_value != NULL && p_new_value != Py_None)
-	{
-		ExecClearTuple(slot);
-		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
-		ExecStoreVirtualTuple(slot);
-	}
-	Py_XDECREF(p_new_value);
-	Py_DECREF(p_row_id);
-	errorCheck();
-	return slot;
+    p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
+    p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O)", p_row_id,
+                                      p_value);
+    errorCheck();
+    if (p_new_value != NULL && p_new_value != Py_None)
+    {
+        ExecClearTuple(slot);
+        pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
+        ExecStoreVirtualTuple(slot);
+    }
+    Py_XDECREF(p_new_value);
+    Py_DECREF(p_row_id);
+    errorCheck();
+    return slot;
 }
 
 /*
@@ -957,12 +977,12 @@ static void
 multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
 
 {
-	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
-	PyObject   *result = PyObject_CallMethod(modstate->fdw_instance, "end_modify", "()");
+    MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
+    PyObject   *result = PyObject_CallMethod(modstate->fdw_instance, "end_modify", "()");
 
-	errorCheck();
-	Py_DECREF(modstate->fdw_instance);
-	Py_DECREF(result);
+    errorCheck();
+    Py_DECREF(modstate->fdw_instance);
+    Py_DECREF(result);
 }
 
 /*
@@ -970,38 +990,38 @@ multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
  */
 static void
 multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
-						   SubTransactionId parentSubid, void *arg)
+                           SubTransactionId parentSubid, void *arg)
 {
-	PyObject   *instance;
-	int			curlevel;
-	HASH_SEQ_STATUS status;
-	CacheEntry *entry;
+    PyObject   *instance;
+    int			curlevel;
+    HASH_SEQ_STATUS status;
+    CacheEntry *entry;
 
-	/* Nothing to do after commit or subtransaction start. */
-	if (event == SUBXACT_EVENT_COMMIT_SUB || event == SUBXACT_EVENT_START_SUB)
-		return;
+    /* Nothing to do after commit or subtransaction start. */
+    if (event == SUBXACT_EVENT_COMMIT_SUB || event == SUBXACT_EVENT_START_SUB)
+        return;
 
-	curlevel = GetCurrentTransactionNestLevel();
+    curlevel = GetCurrentTransactionNestLevel();
 
-	hash_seq_init(&status, InstancesHash);
+    hash_seq_init(&status, InstancesHash);
 
-	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
-	{
-		if (entry->xact_depth < curlevel)
-			continue;
+    while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
+    {
+        if (entry->xact_depth < curlevel)
+            continue;
 
-		instance = entry->value;
-		if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
-		{
-			PyObject_CallMethod(instance, "sub_commit", "(i)", curlevel);
-		}
-		else
-		{
-			PyObject_CallMethod(instance, "sub_rollback", "(i)", curlevel);
-		}
-		errorCheck();
-		entry->xact_depth--;
-	}
+        instance = entry->value;
+        if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
+        {
+            PyObject_CallMethod(instance, "sub_commit", "(i)", curlevel);
+        }
+        else
+        {
+            PyObject_CallMethod(instance, "sub_rollback", "(i)", curlevel);
+        }
+        errorCheck();
+        entry->xact_depth--;
+    }
 }
 
 /*
@@ -1010,138 +1030,138 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 static void
 multicorn_xact_callback(XactEvent event, void *arg)
 {
-	PyObject   *instance;
-	HASH_SEQ_STATUS status;
-	CacheEntry *entry;
+    PyObject   *instance;
+    HASH_SEQ_STATUS status;
+    CacheEntry *entry;
 
-	hash_seq_init(&status, InstancesHash);
-	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
-	{
-		instance = entry->value;
-		if (entry->xact_depth == 0)
-			continue;
+    hash_seq_init(&status, InstancesHash);
+    while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
+    {
+        instance = entry->value;
+        if (entry->xact_depth == 0)
+            continue;
 
-		switch (event)
-		{
-			case XACT_EVENT_PRE_COMMIT:
-				PyObject_CallMethod(instance, "pre_commit", "()");
-				break;
-			case XACT_EVENT_COMMIT:
-				PyObject_CallMethod(instance, "commit", "()");
-				entry->xact_depth = 0;
-				break;
-			case XACT_EVENT_ABORT:
-				PyObject_CallMethod(instance, "rollback", "()");
-				entry->xact_depth = 0;
-				break;
-			default:
-				break;
-		}
-		errorCheck();
-	}
+        switch (event)
+        {
+            case XACT_EVENT_PRE_COMMIT:
+                PyObject_CallMethod(instance, "pre_commit", "()");
+                break;
+            case XACT_EVENT_COMMIT:
+                PyObject_CallMethod(instance, "commit", "()");
+                entry->xact_depth = 0;
+                break;
+            case XACT_EVENT_ABORT:
+                PyObject_CallMethod(instance, "rollback", "()");
+                entry->xact_depth = 0;
+                break;
+            default:
+                break;
+        }
+        errorCheck();
+    }
 }
 
 static List *
 multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
-							 Oid serverOid)
+                             Oid serverOid)
 {
-	List	   *cmds = NULL;
-	List	   *options = NULL;
-	UserMapping *mapping;
-	ForeignServer *f_server;
-	char	   *restrict_type = NULL;
-	PyObject   *p_class = NULL;
-	PyObject   *p_tables,
-			   *p_srv_options,
-			   *p_options,
-			   *p_restrict_list,
-			   *p_iter,
-			   *p_item;
-	ListCell   *lc;
+    List	   *cmds = NULL;
+    List	   *options = NULL;
+    UserMapping *mapping;
+    ForeignServer *f_server;
+    char	   *restrict_type = NULL;
+    PyObject   *p_class = NULL;
+    PyObject   *p_tables,
+               *p_srv_options,
+               *p_options,
+               *p_restrict_list,
+               *p_iter,
+               *p_item;
+    ListCell   *lc;
 
-	f_server = GetForeignServer(serverOid);
-	foreach(lc, f_server->options)
-	{
-		DefElem    *option = (DefElem *) lfirst(lc);
+    f_server = GetForeignServer(serverOid);
+    foreach(lc, f_server->options)
+    {
+        DefElem    *option = (DefElem *) lfirst(lc);
 
-		if (strcmp(option->defname, "wrapper") == 0)
-		{
-			p_class = getClassString(defGetString(option));
-			errorCheck();
-		}
-		else
-		{
-			options = lappend(options, option);
-		}
-	}
-	mapping = multicorn_GetUserMapping(GetUserId(), serverOid);
-	if (mapping)
-		options = list_concat(options, mapping->options);
+        if (strcmp(option->defname, "wrapper") == 0)
+        {
+            p_class = getClassString(defGetString(option));
+            errorCheck();
+        }
+        else
+        {
+            options = lappend(options, option);
+        }
+    }
+    mapping = multicorn_GetUserMapping(GetUserId(), serverOid);
+    if (mapping)
+        options = list_concat(options, mapping->options);
 
-	if (p_class == NULL)
-	{
-		/*
-		 * This should never happen, since we validate the wrapper parameter
-		 * at
-		 */
-		/* object creation time. */
-		ereport(ERROR, (errmsg("%s", "The wrapper parameter is mandatory, specify a valid class name")));
-	}
-	switch (stmt->list_type)
-	{
-		case FDW_IMPORT_SCHEMA_LIMIT_TO:
-			restrict_type = "limit";
-			break;
-		case FDW_IMPORT_SCHEMA_EXCEPT:
-			restrict_type = "except";
-			break;
-		case FDW_IMPORT_SCHEMA_ALL:
-			break;
-	}
-	p_srv_options = optionsListToPyDict(options);
-	p_options = optionsListToPyDict(stmt->options);
-	p_restrict_list = PyList_New(0);
-	foreach(lc, stmt->table_list)
-	{
-		RangeVar   *rv = (RangeVar *) lfirst(lc);
-		PyObject   *p_tablename = PyUnicode_Decode(
-											rv->relname, strlen(rv->relname),
-												   getPythonEncodingName(),
-												   NULL);
+    if (p_class == NULL)
+    {
+        /*
+         * This should never happen, since we validate the wrapper parameter
+         * at
+         */
+        /* object creation time. */
+        ereport(ERROR, (errmsg("%s", "The wrapper parameter is mandatory, specify a valid class name")));
+    }
+    switch (stmt->list_type)
+    {
+        case FDW_IMPORT_SCHEMA_LIMIT_TO:
+            restrict_type = "limit";
+            break;
+        case FDW_IMPORT_SCHEMA_EXCEPT:
+            restrict_type = "except";
+            break;
+        case FDW_IMPORT_SCHEMA_ALL:
+            break;
+    }
+    p_srv_options = optionsListToPyDict(options);
+    p_options = optionsListToPyDict(stmt->options);
+    p_restrict_list = PyList_New(0);
+    foreach(lc, stmt->table_list)
+    {
+        RangeVar   *rv = (RangeVar *) lfirst(lc);
+        PyObject   *p_tablename = PyUnicode_Decode(
+                                            rv->relname, strlen(rv->relname),
+                                                   getPythonEncodingName(),
+                                                   NULL);
 
-		errorCheck();
-		PyList_Append(p_restrict_list, p_tablename);
-		Py_DECREF(p_tablename);
-	}
-	errorCheck();
-	p_tables = PyObject_CallMethod(p_class, "import_schema", "(s, O, O, s, O)",
-							   stmt->remote_schema, p_srv_options, p_options,
-								   restrict_type, p_restrict_list);
-	errorCheck();
-	Py_DECREF(p_class);
-	Py_DECREF(p_options);
-	Py_DECREF(p_srv_options);
-	Py_DECREF(p_restrict_list);
-	errorCheck();
-	p_iter = PyObject_GetIter(p_tables);
-	while ((p_item = PyIter_Next(p_iter)))
-	{
-		PyObject   *p_string;
-		char	   *value;
+        errorCheck();
+        PyList_Append(p_restrict_list, p_tablename);
+        Py_DECREF(p_tablename);
+    }
+    errorCheck();
+    p_tables = PyObject_CallMethod(p_class, "import_schema", "(s, O, O, s, O)",
+                               stmt->remote_schema, p_srv_options, p_options,
+                                   restrict_type, p_restrict_list);
+    errorCheck();
+    Py_DECREF(p_class);
+    Py_DECREF(p_options);
+    Py_DECREF(p_srv_options);
+    Py_DECREF(p_restrict_list);
+    errorCheck();
+    p_iter = PyObject_GetIter(p_tables);
+    while ((p_item = PyIter_Next(p_iter)))
+    {
+        PyObject   *p_string;
+        char	   *value;
 
-		p_string = PyObject_CallMethod(p_item, "to_statement", "(s,s)",
-								   stmt->local_schema, f_server->servername);
-		errorCheck();
-		value = PyString_AsString(p_string);
-		errorCheck();
-		cmds = lappend(cmds, pstrdup(value));
-		Py_DECREF(p_string);
-		Py_DECREF(p_item);
-	}
-	errorCheck();
-	Py_DECREF(p_iter);
-	Py_DECREF(p_tables);
-	return cmds;
+        p_string = PyObject_CallMethod(p_item, "to_statement", "(s,s)",
+                                   stmt->local_schema, f_server->servername);
+        errorCheck();
+        value = PyString_AsString(p_string);
+        errorCheck();
+        cmds = lappend(cmds, pstrdup(value));
+        Py_DECREF(p_string);
+        Py_DECREF(p_item);
+    }
+    errorCheck();
+    Py_DECREF(p_iter);
+    Py_DECREF(p_tables);
+    return cmds;
 }
 
 
@@ -1152,17 +1172,25 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 void *
 serializePlanState(MulticornPlanState * state)
 {
-	List	   *result = NULL;
+    List	   *result = NULL;
 
-	result = lappend(result, makeConst(INT4OID,
-						  -1, InvalidOid, 4, Int32GetDatum(state->numattrs), false, true));
-	result = lappend(result, makeConst(INT4OID,
-					-1, InvalidOid, 4, Int32GetDatum(state->foreigntableid), false, true));
-	result = lappend(result, state->target_list);
+    result = lappend(result, makeConst(INT4OID,
+                          -1, InvalidOid, 4, Int32GetDatum(state->numattrs), false, true));
+    result = lappend(result, makeConst(INT4OID,
+                    -1, InvalidOid, 4, Int32GetDatum(state->foreigntableid), false, true));
+    result = lappend(result, state->target_list);
 
-	result = lappend(result, serializeDeparsedSortGroup(state->pathkeys));
+    result = lappend(result, serializeDeparsedSortGroup(state->pathkeys));
 
-	return result;
+    /* Serialize the new 'limit' attribute as a DOUBLE */
+    result = lappend(result, makeConst(FLOAT8OID,
+                    -1, InvalidOid, 8, Float8GetDatum(state->limit), false, true));
+
+    /* Serialize the 'plan_id' attribute as INT8 */
+    result = lappend(result, makeConst(INT8OID,
+                    -1, InvalidOid, 8, Int64GetDatum(state->plan_id), false, true));
+
+    return result;
 }
 
 /*
@@ -1172,21 +1200,29 @@ serializePlanState(MulticornPlanState * state)
 MulticornExecState *
 initializeExecState(void *internalstate)
 {
-	MulticornExecState *execstate = palloc0(sizeof(MulticornExecState));
-	List	   *values = (List *) internalstate;
-	AttrNumber	attnum = ((Const *) linitial(values))->constvalue;
-	Oid			foreigntableid = ((Const *) lsecond(values))->constvalue;
-	List		*pathkeys;
+    MulticornExecState *execstate = palloc0(sizeof(MulticornExecState));
+    List	   *values = (List *) internalstate;
+    AttrNumber	attnum = ((Const *) linitial(values))->constvalue;
+    Oid			foreigntableid = ((Const *) lsecond(values))->constvalue;
+    List		*pathkeys;
 
-	/* Those list must be copied, because their memory context can become */
-	/* invalid during the execution (in particular with the cursor interface) */
-	execstate->target_list = copyObject(lthird(values));
-	pathkeys = lfourth(values);
-	execstate->pathkeys = deserializeDeparsedSortGroup(pathkeys);
-	execstate->fdw_instance = getInstance(foreigntableid);
-	execstate->buffer = makeStringInfo();
-	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
-	execstate->values = palloc(attnum * sizeof(Datum));
-	execstate->nulls = palloc(attnum * sizeof(bool));
-	return execstate;
+    /* Those list must be copied, because their memory context can become */
+    /* invalid during the execution (in particular with the cursor interface) */
+    execstate->target_list = copyObject(lthird(values));
+    pathkeys = lfourth(values);
+    execstate->pathkeys = deserializeDeparsedSortGroup(pathkeys);
+    execstate->fdw_instance = getInstance(foreigntableid);
+    execstate->buffer = makeStringInfo();
+    execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
+    execstate->values = palloc(attnum * sizeof(Datum));
+    execstate->nulls = palloc(attnum * sizeof(bool));
+
+    /* Deserialize the 'limit' value */
+    execstate->limit = DatumGetFloat8(((Const *) list_nth(values, 4))->constvalue);
+
+    /* Deserialize the 'plan_id' value */
+    Datum plan_id_datum = ((Const *) list_nth(values, 5))->constvalue;
+    execstate->plan_id = DatumGetInt64(plan_id_datum);
+
+    return execstate;
 }
