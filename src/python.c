@@ -1436,15 +1436,17 @@ datumUnknownToPython(Datum datum, ConversionInfo * cinfo, Oid type)
 }
 
 PyObject *
-datumFloatToPython(Datum datum, ConversionInfo * cinfo)
+datumFloat4ToPython(Datum datum, ConversionInfo * cinfo)
 {
-    ssize_t		numvalue = (ssize_t) DatumGetNumeric(datum);
-    char	   *tempvalue = (char *) DirectFunctionCall1(numeric_out,
-                                                         numvalue);
-    PyObject   *buffer = PyString_FromString(tempvalue),
-               *value = PyFloat_FromString(buffer);
-    Py_DECREF(buffer);
-    return value;
+    float4 float4Value = DatumGetFloat4(datum);
+    return PyFloat_FromDouble(float4Value);
+}
+
+PyObject *
+datumFloat8ToPython(Datum datum, ConversionInfo * cinfo)
+{
+    float8 float8Value = DatumGetFloat8(datum);
+    return PyFloat_FromDouble(float8Value);
 }
 
 PyObject *
@@ -1603,8 +1605,9 @@ datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
         case TIMESTAMPOID:
             return datumTimestampToPython(datum, cinfo);
         case FLOAT4OID:
+            return datumFloat4ToPython(datum, cinfo);
         case FLOAT8OID:
-            return datumFloatToPython(datum, cinfo);
+            return datumFloat8ToPython(datum, cinfo);
         case INT2OID:
         case INT4OID:
         case INT8OID:
