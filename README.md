@@ -2,7 +2,7 @@
 Multicorn2
 ==========
 
-Multicorn Python3 Foreign Data Wrapper (FDW) for Postgresql.  Tested on Linux w/ Python 3.9-3.11 & Postgres 12-17.
+Multicorn Python3 Foreign Data Wrapper (FDW) for Postgresql.  Tested on Linux w/ Python 3.9-3.12 & Postgres 13-17.
 
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
 
@@ -14,8 +14,8 @@ details.
 In use, Multicorn includes a Python package which contains:
 
 - A `__init__.py` which provides a base class from which your new,
-  custom, FDW will derive.
-- A `utils.py` containing diagnostic support code your FDW can use.
+  custom, Extension will derive.
+- A `utils.py` containing diagnostic support code your Extension can use.
 - Several useful example FDW implementations.
 
 Multicorn also includes, under the covers, **two** shared libraries:
@@ -32,14 +32,13 @@ Multicorn also includes, under the covers, **two** shared libraries:
 2.) Change into the pgedge directory and install pgXX
 ```bash
 cd pgedge
-./pgedge install pg16 --start
+./pgedge install pg17 --start
 ./pgedge install multicorn2
 ```
 
 3.) Use multicorn as you normally would AND you can install popular FDW's that use multicorn such as ElasticSerachFDW & BigQueryFDW
 ```bash
-      ./io install esfdw
-      ./io install bqfdw
+      ./pgedge install mqttclient
 ```
 
 ## Building Multicorn2 against Postgres from Source
@@ -64,17 +63,16 @@ sudo yum -y install git python3 python3-devel python3-pip
 ### Upgrade to latest PIP (recommended)
 ```bash
 cd ~
-wget https://bootstrap.pypa.io/get-pip.py
-sudo python3 get-pip.py
-rm get-pip.py
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-### Download & Compile Postgres 12+ source code
+### Download & Compile Postgres 13+ source code
 ```bash
 cd ~
-wget https://ftp.postgresql.org/pub/source/v14.3/postgresql-14.3.tar.gz
-tar -xvf postgresql-14.3.tar.gz
-cd postgresql-14.3
+wget https://ftp.postgresql.org/pub/source/v17.0/postgresql-17.0.tar.gz
+tar -xvf postgresql-17.0.tar.gz
+cd postgresql-17.0
 ./configure
 make
 sudo make install
@@ -83,10 +81,10 @@ sudo make install
 ### Download & Compile Multicorn2
 ```bash
 set PATH=/usr/local/pgsql/bin:$PATH
-cd ~/postgresql-14.3/contrib
-wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v2.3.tar.gz
-tar -xvf v2.3.tar.gz
-cd multicorn2-2.3
+cd ~/postgresql-17.0/contrib
+wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v3.0.tar.gz
+tar -xvf v3.0.tar.gz
+cd multicorn2-3.0
 make
 sudo make install
 ```
@@ -117,9 +115,9 @@ sudo yum -y install git python3 python3-devel python3-pip
 
 ### Download & Compile Multicorn2
 ```bash
-wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v2.5.tar.gz
-tar -xvf v2.5.tar.gz
-cd multicorn2-2.5
+wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v3.0.tar.gz
+tar -xvf v3.0.tar.gz
+cd multicorn2-3.0
 make
 sudo make install
 ```
@@ -147,11 +145,11 @@ This can be slow to run when it is first executed (15-30 minutes) due to the nee
 To run a faster test suite against a specific version of Python and PostgreSQL, run:
 
 ```bash
-nix build .#testSuites.test_pg12_py39
+nix build .#testSuites.test_pg13_py39
 ```
 
 **Known issues:**
-- The tests cover only the supported range of Python & PostgreSQL combinations; in particular, Python releases 3.12 and later are disabled due to failures that have not been addressed.
+- The tests cover the supported range of Python & PostgreSQL combinations;
 
 ### Adding new Python or PostgreSQL versions to the test suite
 
@@ -159,6 +157,6 @@ nix build .#testSuites.test_pg12_py39
 
 2. Update the supported list of versions in flake.nix under the variable `testPythonVersions` or `testPostgresVersions`.
 
-3. For new Python versions, create a new symlink to test-3.6 with the version number of the new Python version; and update the list of test directories in `makeTestSuite` in flake.nix.
+3. For new Python versions, create a new symlink to test-3.9 with the version number of the new Python version; and update the list of test directories in `makeTestSuite` in flake.nix.
 
 4. Run the tests with `nix build .#allTestSuites` to ensure that the new versions are supported.
