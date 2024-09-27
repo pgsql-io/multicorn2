@@ -9,7 +9,7 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system: let
       debugBuild = false;
-      multicornVersion = "3.0";
+      multicornVersion = "3.1";
 
       pkgs = nixpkgs.legacyPackages.${system};
 
@@ -29,7 +29,6 @@
         # python313 # tests are currently broken
       ];
       testPostgresVersions = with pkgs; [
-        postgresql_12
         postgresql_13
         postgresql_14
         postgresql_15
