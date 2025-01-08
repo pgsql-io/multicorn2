@@ -93,7 +93,6 @@ else
 	python_version = $(shell ${PYTHON} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1-2)
 	PYTHON_CONFIG ?= python${python_version}-config
 
-	# --embed required for Py >= 3.8
 	PY_LIBSPEC = $(shell ${PYTHON_CONFIG} --embed >/dev/null && ${PYTHON_CONFIG} --libs --embed || ${PYTHON_CONFIG} --libs)
 	PY_INCLUDESPEC = $(shell ${PYTHON_CONFIG} --includes)
 	PY_CFLAGS = $(shell ${PYTHON_CONFIG} --cflags)

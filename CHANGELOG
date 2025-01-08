@@ -2,10 +2,12 @@
 done so far:
    - opened up for development
    - drop support for Postgres versions prior to 13
-
-to do:
    - confirm support for Python 3.12
    - confirm support for pg17
+still to do:
+   - automated testing for pg17
+   - confirm support for Python 3.12
+
 
 
 3.0:
