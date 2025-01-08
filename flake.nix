@@ -33,6 +33,7 @@
         postgresql_14
         postgresql_15
         postgresql_16
+        postgresql_17
       ];
       testVersionCombos = pkgs.lib.cartesianProductOfSets {
         python = testPythonVersions;

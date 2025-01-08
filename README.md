@@ -4,6 +4,8 @@ Multicorn2
 
 Multicorn Python3 Foreign Data Wrapper (FDW) for Postgresql.  Tested on Linux w/ Python 3.9-3.12 & Postgres 13-17.
 
+Testing is underway for supporting Python 3.13 and is expected in v3.1.  Newest versions of major linux distro's (Debian 12, Ubuntu 24.04 & EL10) are all still using Python 3.12 so sticking with using 3.12 is advised in the short run.
+
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
 
 Multicorn2 is distributed under the PostgreSQL license. See the LICENSE file for
