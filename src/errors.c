@@ -34,6 +34,8 @@ errorCheck()
 		// and detail, and log it to Postgres.  These exceptions are generated in utils.py to intercept ERROR/FATAL log
 		// messages.  So, first detect whether that's the case, and call a new reporting function...
 		PyObject *is_multicorn_exception = PyObject_GetAttrString(pErrValue, "_is_multicorn_exception");
+		// clear AttributeError possibly raised by PyObject_GetAttrString
+		PyErr_Clear();
 		if (is_multicorn_exception != NULL && PyObject_IsTrue(is_multicorn_exception))
 		{
 			Py_DECREF(is_multicorn_exception);
