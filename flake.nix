@@ -18,15 +18,15 @@
         [ ps.sqlalchemy ] ++ ps.sqlalchemy.optional-dependencies.postgresql
       );
 
-      devPostgresql = pkgs.postgresql_15.overrideAttrs (oldAttrs: {} // pkgs.lib.optionalAttrs debugBuild { dontStrip = true; }); # If debug symbols are needed.
-      devPython = pkgs.python310.withPackages (ps: (requiredPythonPackages ps));
+      devPostgresql = pkgs.postgresql_17.overrideAttrs (oldAttrs: {} // pkgs.lib.optionalAttrs debugBuild { dontStrip = true; }); # If debug symbols are needed.
+      devPython = pkgs.python311.withPackages (ps: (requiredPythonPackages ps));
 
       testPythonVersions = with pkgs; [
-        python39
-        python310
+        # python39 # end of security support is scheduled for 2025-10-31; therefore nixpkgs support was dropped before nixos 25.05 was released
+        # python310 # error: sphinx-8.2.3 not supported for interpreter python3.10
         python311
-        # python312 # tests are currently broken
-        # python313 # tests are currently broken
+        # python312 # tests are currently broken where plpython3u is used -- https://github.com/pgsql-io/multicorn2/issues/60
+        # python313 # tests are currently broken where plpython3u is used -- https://github.com/pgsql-io/multicorn2/issues/60
       ];
       testPostgresVersions = with pkgs; [
         postgresql_13
@@ -35,7 +35,7 @@
         postgresql_16
         postgresql_17
       ];
-      testVersionCombos = pkgs.lib.cartesianProductOfSets {
+      testVersionCombos = pkgs.lib.cartesianProduct {
         python = testPythonVersions;
         postgres = testPostgresVersions;
       };
@@ -63,9 +63,12 @@
           chmod -R +w .
         '';
 
-        buildInputs = target_postgresql.buildInputs ++ [
-          target_postgresql
-          (target_python.withPackages (ps: (requiredPythonPackages ps)))
+        buildInputs = [
+          target_python
+        ];
+        nativeBuildInputs = [
+          target_postgresql.pg_config
+          pkgs.clang
         ];
         installPhase = ''
           runHook preInstall
@@ -101,7 +104,9 @@
           chmod -R +w .
         '';
 
-        nativeBuildInputs = [ target_postgresql ];
+        nativeBuildInputs = [
+          target_postgresql.pg_config
+        ];
 
         separateDebugInfo = true;
       };
@@ -116,8 +121,33 @@
           python3 = test_python;
         });
 
-      makeTestSuite = test_python: test_postgresql: pkgs.stdenv.mkDerivation {
-        name = "multicorn2-python-test";
+      makeTestSuite = test_python: test_postgresql:
+      let
+        # "# -> Build order", so to speak... structed to build up a PostgreSQL with a compatible Python interpreter that
+        # is already configured to load the multicorn module.
+        #
+        # 1. Multicorn python package first, using the "raw" Python & "raw" PostgreSQL
+        multicornPython = (makeMulticornPythonPackage test_python test_postgresql);
+
+        # 2. Python enhanced w/ the multicorn package
+        enhancedPython = (test_python.withPackages (ps: [multicornPython] ++ (requiredPythonPackages ps) ));
+
+        # 3. PostgreSQL w/ plpython3, using "enhanced" Python
+        pythonEnabledPostgres = (makePostgresWithPlPython enhancedPython test_postgresql);
+
+        # 4. Multicorn postgresql extension, using the "enhanced" Python & plpython3 PostgreSQL
+        multicornPostgresExtension = (makeMulticornPostgresExtension enhancedPython pythonEnabledPostgres);
+
+        # 5. PostgreSQL w/ plpython3 + multicorn extension
+        postgresqlWithMulticorn = pythonEnabledPostgres.withPackages (ps: [
+          pythonEnabledPostgres.plpython3
+          multicornPostgresExtension
+        ]);
+
+        pgMajorVersion = pkgs.lib.versions.major test_postgresql.version;
+        expectedTestCount = if pkgs.lib.versionOlder pgMajorVersion "14" then "18" else "19";
+      in pkgs.stdenv.mkDerivation {
+        name = "multicorn2-python-test-pg${test_postgresql.version}-py${test_python.version}";
 
         phases = [ "unpackPhase" "checkPhase" "installPhase" ];
         doCheck = true;
@@ -128,6 +158,8 @@
           ./test-3.9
           ./test-3.10
           ./test-3.11
+          ./test-3.12
+          ./test-3.13
           ./test-common
         ];
         unpackPhase = ''
@@ -138,31 +170,46 @@
         '';
 
         nativeCheckInputs = [
-          (
-            (makePostgresWithPlPython test_python test_postgresql).withPackages (ps: [
-              (makeMulticornPostgresExtension test_python test_postgresql)
-            ])
-          )
-          (test_python.withPackages (ps:
-            [(makeMulticornPythonPackage test_python test_postgresql)]
-            ++
-            (requiredPythonPackages ps)
-          ))
+          postgresqlWithMulticorn
+          postgresqlWithMulticorn.pg_config
+          enhancedPython
         ];
         checkPhase = ''
           runHook preCheck
 
+          # Verify that we can load sqlalchemy & psycopg2 before we attempt tests, otherwise `UNSUPPORTS_SQLALCHEMY`
+          # will quietly be set and the tests will skipped silently.
+          echo "Verifying sqlalchemy is installed..."
           python -c "import sqlalchemy;import psycopg2"
 
+          # Verify that pg_config is available, otherwise pgxs may not be available to be loaded into the Makefile,
+          # which will result in pg_regress_check being undefined, which will result in an empty command, which will
+          # result in tests exiting and being ignored from `easycheck`.
+          echo "Verifying pg_config is accessible..."
+          pg_config --version
+
+          # Verifying that `multicorn` python module can be accessed by the in-PATH python.
+          echo "Verifying that multicorn python module is accessible..."
+          python -c "import multicorn"
+
           set +e
-          make easycheck
+          # PG17+ has a regression-test optimization to reduce initdb runs by doing initdb once and copying it to future
+          # tests.  However, it fails to work in this build environment -- `with_temp_install=""` disables that
+          # optimization.
+          make with_temp_install="" easycheck | tee /build/easycheck.log
           RESULT=$?
           set -e
           if [[ $RESULT -ne 0 ]]; then
             echo "easycheck failed"
-            cat /build/regression.diffs
+            [[ -f /build/log/initdb.log ]] && cat /build/log/initdb.log
+            [[ -f /build/log/postmaster.log ]] && cat /build/log/postmaster.log
+            [[ -f /build/regression.diffs ]] && cat /build/regression.diffs
             exit $RESULT
           fi
+
+          echo "Verifying all ${expectedTestCount} test suites were executed..."
+          # should exit non-zero if grep doesn't match
+          grep "All ${expectedTestCount} tests passed." /build/easycheck.log
 
           runHook postCheck
         '';
@@ -174,6 +221,7 @@
         buildInputs = [
           devPython
           devPostgresql
+          devPostgresql.pg_config
         ];
       };
 
