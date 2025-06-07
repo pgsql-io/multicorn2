@@ -143,6 +143,9 @@
           pythonEnabledPostgres.plpython3
           multicornPostgresExtension
         ]);
+
+        pgMajorVersion = pkgs.lib.versions.major test_postgresql.version;
+        expectedTestCount = if pkgs.lib.versionOlder pgMajorVersion "14" then "18" else "19";
       in pkgs.stdenv.mkDerivation {
         name = "multicorn2-python-test-pg${test_postgresql.version}-py${test_python.version}";
 
@@ -193,7 +196,7 @@
           # PG17+ has a regression-test optimization to reduce initdb runs by doing initdb once and copying it to future
           # tests.  However, it fails to work in this build environment -- `with_temp_install=""` disables that
           # optimization.
-          make with_temp_install="" easycheck
+          make with_temp_install="" easycheck | tee /build/easycheck.log
           RESULT=$?
           set -e
           if [[ $RESULT -ne 0 ]]; then
@@ -203,6 +206,10 @@
             [[ -f /build/regression.diffs ]] && cat /build/regression.diffs
             exit $RESULT
           fi
+
+          echo "Verifying all ${expectedTestCount} test suites were executed..."
+          # should exit non-zero if grep doesn't match
+          grep "All ${expectedTestCount} tests passed." /build/easycheck.log
 
           runHook postCheck
         '';
