@@ -126,14 +126,14 @@
         # "# -> Build order", so to speak... structed to build up a PostgreSQL with a compatible Python interpreter that
         # is already configured to load the multicorn module.
         #
-        # 1. Multicorn python package first, using the "raw" Python & "raw" PostgreSQL
+        # 1. PostgreSQL w/ plpython3, using "raw" Python
+        pythonEnabledPostgres = (makePostgresWithPlPython test_python test_postgresql);
+
+        # 2. Multicorn python package first, using the "raw" Python & "raw" PostgreSQL
         multicornPython = (makeMulticornPythonPackage test_python test_postgresql);
 
-        # 2. Python enhanced w/ the multicorn package
+        # 3. Python enhanced w/ the multicorn package
         enhancedPython = (test_python.withPackages (ps: [multicornPython] ++ (requiredPythonPackages ps) ));
-
-        # 3. PostgreSQL w/ plpython3, using "enhanced" Python
-        pythonEnabledPostgres = (makePostgresWithPlPython enhancedPython test_postgresql);
 
         # 4. Multicorn postgresql extension, using the "enhanced" Python & plpython3 PostgreSQL
         multicornPostgresExtension = (makeMulticornPostgresExtension enhancedPython pythonEnabledPostgres);
