@@ -2,7 +2,7 @@
 Multicorn2
 ==========
 
-Multicorn Python3 Foreign Data Wrapper (FDW) for Postgresql.  Tested on Linux w/ Python 3.9-3.12 & Postgres 13-17.
+Multicorn Python3 Foreign Data Wrapper (FDW) for Postgresql.  Tested on Linux w/ Python 3.9-3.13 & Postgres 13-17.
 
 Testing is underway for supporting Python 3.13 and is expected in v3.1.  Newest versions of major linux distro's (Debian 12, Ubuntu 24.04 & EL10) are all still using Python 3.12 so sticking with using 3.12 is advised in the short run.
 
@@ -132,6 +132,15 @@ In your running instance of Postgres from the PSQL command line
 CREATE EXTENSION multicorn;
 ```
 
+## Known Issues
+
+### PL/Python
+
+multicorn2 and PL/Python are incompatible with each other as-of Python 3.12.  Due to internal [technical limitations](https://github.com/pgsql-io/multicorn2/issues/60), both systems cannot be used simultaneously within the same PostgreSQL database.
+
+However, both can be installed on the same system without conflict.  Since PL/Python is commonly installed by default in packaged PostgreSQL distributions, multicorn2 can still be installed and used when PL/Python is not actively being used.
+
+
 ## Integration tests
 
 multicorn2 has an extensive suite of integration tests which run against live PostgreSQL servers.  In order to manage the matrix of supported versions of Python and PostgreSQL, the Nix package manager can be used to provide all the dependencies and run all the tests.  The Nix package manager is supported on Linux, MacOS, and Windows Subsystem for Linux.  To install Nix, follow the instructions at https://nixos.org/download/.
@@ -149,9 +158,6 @@ To run a faster test suite against a specific version of Python and PostgreSQL, 
 ```bash
 nix build .#testSuites.test_pg13_py39
 ```
-
-**Known issues:**
-- The tests cover the supported range of Python & PostgreSQL combinations;
 
 ### Adding new Python or PostgreSQL versions to the test suite
 

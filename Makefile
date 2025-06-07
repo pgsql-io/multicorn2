@@ -110,6 +110,10 @@ PYTHON_TEST_VERSION ?= $(python_version)
 PG_TEST_VERSION ?= $(MAJORVERSION)
 UNSUPPORTS_SQLALCHEMY=$(shell python -c "import sqlalchemy;import psycopg2"  1> /dev/null 2>&1; echo $$?)
 
+# Check if Python version is 3.12 or greater
+PYTHON_VERSION_MAJOR_MINOR=$(shell python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+PYTHON_GE_312=$(shell python -c "import sys; print(1 if (sys.version_info.major, sys.version_info.minor) >= (3, 12) else 0)")
+
 TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_column_options_test.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_error_test.sql \
@@ -121,10 +125,14 @@ TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql 
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_dict.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_list.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_sort.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/write_filesystem.sql \
   test-$(PYTHON_TEST_VERSION)/sql/write_savepoints.sql \
   test-$(PYTHON_TEST_VERSION)/sql/write_test.sql \
   test-$(PYTHON_TEST_VERSION)/sql/import_test.sql
+
+# Only include write_filesystem.sql for Python versions < 3.12
+ifneq ($(PYTHON_GE_312), 1)
+  TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_filesystem.sql
+endif
 
 ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
   TESTS += test-$(PYTHON_TEST_VERSION)/sql/multicorn_alchemy_test.sql \
