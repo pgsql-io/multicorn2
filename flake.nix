@@ -33,7 +33,7 @@
         postgresql_14
         postgresql_15
         postgresql_16
-        # postgresql_17
+        postgresql_17
       ];
       testVersionCombos = pkgs.lib.cartesianProduct {
         python = testPythonVersions;
@@ -144,7 +144,7 @@
           multicornPostgresExtension
         ]);
       in pkgs.stdenv.mkDerivation {
-        name = "multicorn2-python-test";
+        name = "multicorn2-python-test-pg${test_postgresql.version}-py${test_python.version}";
 
         phases = [ "unpackPhase" "checkPhase" "installPhase" ];
         doCheck = true;
@@ -190,12 +190,17 @@
           python -c "import multicorn"
 
           set +e
-          make easycheck
+          # PG17+ has a regression-test optimization to reduce initdb runs by doing initdb once and copying it to future
+          # tests.  However, it fails to work in this build environment -- `with_temp_install=""` disables that
+          # optimization.
+          make with_temp_install="" easycheck
           RESULT=$?
           set -e
           if [[ $RESULT -ne 0 ]]; then
             echo "easycheck failed"
-            cat /build/regression.diffs
+            [[ -f /build/log/initdb.log ]] && cat /build/log/initdb.log
+            [[ -f /build/log/postmaster.log ]] && cat /build/log/postmaster.log
+            [[ -f /build/regression.diffs ]] && cat /build/regression.diffs
             exit $RESULT
           fi
 
