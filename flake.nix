@@ -64,7 +64,7 @@
         '';
 
         buildInputs = [
-          (target_python.withPackages (ps: (requiredPythonPackages ps)))
+          target_python
         ];
         nativeBuildInputs = [
           target_postgresql.pg_config
@@ -121,7 +121,28 @@
           python3 = test_python;
         });
 
-      makeTestSuite = test_python: test_postgresql: pkgs.stdenv.mkDerivation {
+      makeTestSuite = test_python: test_postgresql:
+      let
+        # "Build order", so to speak...
+        # 1. Multicorn python package first, using the "raw" Python & "raw" PostgreSQL
+        # 2. Python enhanced w/ the multicorn package
+        # 3. PostgreSQL w/ plpython3, using "enhanced" Python
+        # 4. Multicorn postgresql extension, using the "enhanced" Python & plpython3 PostgreSQL
+        # 5. PostgreSQL w/ plpython3 + multicorn extension
+
+        multicornPython = (makeMulticornPythonPackage test_python test_postgresql);
+        enhancedPython = (test_python.withPackages (ps:
+          [multicornPython]
+          ++
+          (requiredPythonPackages ps)
+        ));
+        pythonEnabledPostgres = (makePostgresWithPlPython enhancedPython test_postgresql);
+        multicornPostgresExtension = (makeMulticornPostgresExtension enhancedPython pythonEnabledPostgres);
+        postgresqlWithMulticorn = pythonEnabledPostgres.withPackages (ps: [
+          pythonEnabledPostgres.plpython3
+          multicornPostgresExtension
+        ]);
+      in pkgs.stdenv.mkDerivation {
         name = "multicorn2-python-test";
 
         phases = [ "unpackPhase" "checkPhase" "installPhase" ];
@@ -145,21 +166,27 @@
         '';
 
         nativeCheckInputs = [
-          (
-            (makePostgresWithPlPython test_python test_postgresql).withPackages (ps: [
-              (makeMulticornPostgresExtension test_python test_postgresql)
-            ])
-          )
-          (test_python.withPackages (ps:
-            [(makeMulticornPythonPackage test_python test_postgresql)]
-            ++
-            (requiredPythonPackages ps)
-          ))
+          postgresqlWithMulticorn
+          postgresqlWithMulticorn.pg_config
+          enhancedPython
         ];
         checkPhase = ''
           runHook preCheck
 
+          # Verify that we can load sqlalchemy & psycopg2 before we attempt tests, otherwise `UNSUPPORTS_SQLALCHEMY`
+          # will quietly be set and the tests will skipped silently.
+          echo "Verifying sqlalchemy is installed..."
           python -c "import sqlalchemy;import psycopg2"
+
+          # Verify that pg_config is available, otherwise pgxs may not be available to be loaded into the Makefile,
+          # which will result in pg_regress_check being undefined, which will result in an empty command, which will
+          # result in tests exiting and being ignored from `easycheck`.
+          echo "Verifying pg_config is accessible..."
+          pg_config --version
+
+          # Verifying that `multicorn` python module can be accessed by the in-PATH python.
+          echo "Verifying that multicorn python module is accessible..."
+          python -c "import multicorn"
 
           set +e
           make easycheck
@@ -181,6 +208,7 @@
         buildInputs = [
           devPython
           devPostgresql
+          devPostgresql.pg_config
         ];
       };
 
