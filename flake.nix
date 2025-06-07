@@ -18,15 +18,15 @@
         [ ps.sqlalchemy ] ++ ps.sqlalchemy.optional-dependencies.postgresql
       );
 
-      devPostgresql = pkgs.postgresql_15.overrideAttrs (oldAttrs: {} // pkgs.lib.optionalAttrs debugBuild { dontStrip = true; }); # If debug symbols are needed.
-      devPython = pkgs.python310.withPackages (ps: (requiredPythonPackages ps));
+      devPostgresql = pkgs.postgresql_17.overrideAttrs (oldAttrs: {} // pkgs.lib.optionalAttrs debugBuild { dontStrip = true; }); # If debug symbols are needed.
+      devPython = pkgs.python313.withPackages (ps: (requiredPythonPackages ps));
 
       testPythonVersions = with pkgs; [
-        python39
-        python310
+        # python39 # end of security support is scheduled for 2025-10-31; therefore nixpkgs support was dropped before nixos 25.05 was released
+        # python310 # error: sphinx-8.2.3 not supported for interpreter python3.10
         python311
-        # python312 # tests are currently broken
-        # python313 # tests are currently broken
+        python312
+        python313
       ];
       testPostgresVersions = with pkgs; [
         postgresql_13
@@ -35,7 +35,7 @@
         postgresql_16
         postgresql_17
       ];
-      testVersionCombos = pkgs.lib.cartesianProductOfSets {
+      testVersionCombos = pkgs.lib.cartesianProduct {
         python = testPythonVersions;
         postgres = testPostgresVersions;
       };
@@ -63,9 +63,12 @@
           chmod -R +w .
         '';
 
-        buildInputs = target_postgresql.buildInputs ++ [
-          target_postgresql
+        buildInputs = [
           (target_python.withPackages (ps: (requiredPythonPackages ps)))
+        ];
+        nativeBuildInputs = [
+          target_postgresql.pg_config
+          pkgs.clang
         ];
         installPhase = ''
           runHook preInstall
@@ -101,7 +104,9 @@
           chmod -R +w .
         '';
 
-        nativeBuildInputs = [ target_postgresql ];
+        nativeBuildInputs = [
+          target_postgresql.pg_config
+        ];
 
         separateDebugInfo = true;
       };
@@ -128,6 +133,8 @@
           ./test-3.9
           ./test-3.10
           ./test-3.11
+          ./test-3.12
+          ./test-3.13
           ./test-common
         ];
         unpackPhase = ''
