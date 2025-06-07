@@ -105,7 +105,7 @@ SELECT count(1) from testmulticorn where data ilike '% UPDATED!';
 BEGIN;
     UPDATE testmulticorn set data = data || ' UPDATED!';
     UPDATE testmulticorn set data = data || ' TWICE!';
-    SELECT data from testmulticorn order by filename;
+    SELECT data from testmulticorn order by filename; 
 ROLLBACK;
 
 -- No 'UPDATED! or 'TWICE!'
@@ -121,7 +121,7 @@ BEGIN;
     -- There should be one line with magenta, and 0 with cyan and the old
     -- filename
     UPDATE testmulticorn set color = 'magenta' where color = 'cyan';
-    SELECT filename, data from testmulticorn where color = 'magenta' order by filename;
+    SELECT filename, data from testmulticorn where color = 'magenta' order by filename;  
     SELECT filename, data from testmulticorn where color = 'cyan' order by filename;
     SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt' order by filename;
     UPDATE testmulticorn set color = 'blue' where color = 'magenta';
@@ -155,7 +155,7 @@ BEGIN;
   select count(1) from testmulticorn where color = 'red';
 ROLLBACK;
 -- Should have 4 rows
-select count(1) from testmulticorn where color = 're3d';
+select count(1) from testmulticorn where color = 'red';
 
 
 -- Test various combinations of INSERT/UPDATE/DELETE
