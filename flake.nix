@@ -19,21 +19,21 @@
       );
 
       devPostgresql = pkgs.postgresql_17.overrideAttrs (oldAttrs: {} // pkgs.lib.optionalAttrs debugBuild { dontStrip = true; }); # If debug symbols are needed.
-      devPython = pkgs.python313.withPackages (ps: (requiredPythonPackages ps));
+      devPython = pkgs.python311.withPackages (ps: (requiredPythonPackages ps));
 
       testPythonVersions = with pkgs; [
         # python39 # end of security support is scheduled for 2025-10-31; therefore nixpkgs support was dropped before nixos 25.05 was released
         # python310 # error: sphinx-8.2.3 not supported for interpreter python3.10
         python311
-        python312
-        python313
+        # python312 # tests are currently broken where plpython3u is used -- https://github.com/pgsql-io/multicorn2/issues/60
+        # python313 # tests are currently broken where plpython3u is used -- https://github.com/pgsql-io/multicorn2/issues/60
       ];
       testPostgresVersions = with pkgs; [
         postgresql_13
         postgresql_14
         postgresql_15
         postgresql_16
-        postgresql_17
+        # postgresql_17
       ];
       testVersionCombos = pkgs.lib.cartesianProduct {
         python = testPythonVersions;
@@ -123,21 +123,22 @@
 
       makeTestSuite = test_python: test_postgresql:
       let
-        # "Build order", so to speak...
+        # "# -> Build order", so to speak... structed to build up a PostgreSQL with a compatible Python interpreter that
+        # is already configured to load the multicorn module.
+        #
         # 1. Multicorn python package first, using the "raw" Python & "raw" PostgreSQL
-        # 2. Python enhanced w/ the multicorn package
-        # 3. PostgreSQL w/ plpython3, using "enhanced" Python
-        # 4. Multicorn postgresql extension, using the "enhanced" Python & plpython3 PostgreSQL
-        # 5. PostgreSQL w/ plpython3 + multicorn extension
-
         multicornPython = (makeMulticornPythonPackage test_python test_postgresql);
-        enhancedPython = (test_python.withPackages (ps:
-          [multicornPython]
-          ++
-          (requiredPythonPackages ps)
-        ));
+
+        # 2. Python enhanced w/ the multicorn package
+        enhancedPython = (test_python.withPackages (ps: [multicornPython] ++ (requiredPythonPackages ps) ));
+
+        # 3. PostgreSQL w/ plpython3, using "enhanced" Python
         pythonEnabledPostgres = (makePostgresWithPlPython enhancedPython test_postgresql);
+
+        # 4. Multicorn postgresql extension, using the "enhanced" Python & plpython3 PostgreSQL
         multicornPostgresExtension = (makeMulticornPostgresExtension enhancedPython pythonEnabledPostgres);
+
+        # 5. PostgreSQL w/ plpython3 + multicorn extension
         postgresqlWithMulticorn = pythonEnabledPostgres.withPackages (ps: [
           pythonEnabledPostgres.plpython3
           multicornPostgresExtension
