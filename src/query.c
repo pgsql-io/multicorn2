@@ -67,7 +67,6 @@ extractColumns(List *reltargetlist, List *restrictinfolist)
 {
 	ListCell   *lc;
 	List	   *columns = NULL;
-	int			i = 0;
 
 	foreach(lc, reltargetlist)
 	{
@@ -76,7 +75,6 @@ extractColumns(List *reltargetlist, List *restrictinfolist)
 
 		targetcolumns = pull_var_clause(node, PVC_RECURSE_AGGREGATES| PVC_RECURSE_PLACEHOLDERS);
 		columns = list_union(columns, targetcolumns);
-		i++;
 	}
 	foreach(lc, restrictinfolist)
 	{
@@ -363,7 +361,7 @@ extractClauseFromOpExpr(
 		/* Do not add it if it either contains a mutable function, or makes */
 		/* self references in the right hand side. */
 		if (!(contain_volatile_functions((Node *) right) ||
-			  bms_is_subset(base_relids, 
+			  bms_is_subset(base_relids,
 					pull_varnos(
 #if PG_VERSION_NUM >= 140000
 											root,
