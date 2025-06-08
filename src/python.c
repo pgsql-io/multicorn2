@@ -922,7 +922,7 @@ execute(ForeignScanState *node, ExplainState *es)
 	{
 		MulticornBaseQual *qual = lfirst(lc);
 		MulticornConstQual *newqual = NULL;
-		bool		isNull;
+		bool		isNull = false;
 		ExprState  *expr_state = NULL;
 
 		switch (qual->right_type)
