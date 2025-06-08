@@ -25,8 +25,8 @@
         # python39 # end of security support is scheduled for 2025-10-31; therefore nixpkgs support was dropped before nixos 25.05 was released
         # python310 # error: sphinx-8.2.3 not supported for interpreter python3.10
         python311
-        # python312 # tests are currently broken where plpython3u is used -- https://github.com/pgsql-io/multicorn2/issues/60
-        # python313 # tests are currently broken where plpython3u is used -- https://github.com/pgsql-io/multicorn2/issues/60
+        python312
+        python313
       ];
       testPostgresVersions = with pkgs; [
         postgresql_13
@@ -126,14 +126,14 @@
         # "# -> Build order", so to speak... structed to build up a PostgreSQL with a compatible Python interpreter that
         # is already configured to load the multicorn module.
         #
-        # 1. Multicorn python package first, using the "raw" Python & "raw" PostgreSQL
+        # 1. PostgreSQL w/ plpython3, using "raw" Python
+        pythonEnabledPostgres = (makePostgresWithPlPython test_python test_postgresql);
+
+        # 2. Multicorn python package first, using the "raw" Python & "raw" PostgreSQL
         multicornPython = (makeMulticornPythonPackage test_python test_postgresql);
 
-        # 2. Python enhanced w/ the multicorn package
+        # 3. Python enhanced w/ the multicorn package
         enhancedPython = (test_python.withPackages (ps: [multicornPython] ++ (requiredPythonPackages ps) ));
-
-        # 3. PostgreSQL w/ plpython3, using "enhanced" Python
-        pythonEnabledPostgres = (makePostgresWithPlPython enhancedPython test_postgresql);
 
         # 4. Multicorn postgresql extension, using the "enhanced" Python & plpython3 PostgreSQL
         multicornPostgresExtension = (makeMulticornPostgresExtension enhancedPython pythonEnabledPostgres);
@@ -145,7 +145,11 @@
         ]);
 
         pgMajorVersion = pkgs.lib.versions.major test_postgresql.version;
-        expectedTestCount = if pkgs.lib.versionOlder pgMajorVersion "14" then "18" else "19";
+        pythonVersion = pkgs.lib.versions.majorMinor test_python.version;
+        isPython312OrHigher = pkgs.lib.versionAtLeast pythonVersion "3.12";
+
+        baseTestCount = if pkgs.lib.versionOlder pgMajorVersion "14" then 18 else 19;
+        expectedTestCount = toString (baseTestCount - (if isPython312OrHigher then 1 else 0));
       in pkgs.stdenv.mkDerivation {
         name = "multicorn2-python-test-pg${test_postgresql.version}-py${test_python.version}";
 
