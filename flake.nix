@@ -13,6 +13,14 @@
 
       pkgs = nixpkgs.legacyPackages.${system};
 
+      # PostgreSQL 18 isn't released yet, and therefore isn't available in nixpkgs.  As a temporary pre-release measure,
+      # override the PG17 package with the beta release tag and version to build the beta.
+      postgresql_18 = (pkgs.postgresql_17.override {
+        version = "18.0";
+        rev = "refs/tags/REL_18_BETA1";
+        hash = "sha256-P86bVYfPzkwK/rcvUInYZew/pKejk58/IcnDGx/BWno=";
+      });
+
       requiredPythonPackages = ps: (
         # Such that we pass the UNSUPPORTS_SQLALCHEMY check in Makefile and can run the SQLAlchemy tests
         [ ps.sqlalchemy ] ++ ps.sqlalchemy.optional-dependencies.postgresql
@@ -34,6 +42,7 @@
         postgresql_15
         postgresql_16
         postgresql_17
+        postgresql_18
       ];
       testVersionCombos = pkgs.lib.cartesianProduct {
         python = testPythonVersions;

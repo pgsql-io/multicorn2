@@ -27,6 +27,9 @@
 #include "parser/parsetree.h"
 #include "fmgr.h"
 #include "common/hashfn.h" /* oid_hash */
+#if PG_VERSION_NUM >= 180000
+#include "commands/explain_format.h"
+#endif
 
 
 PG_MODULE_MAGIC;
@@ -361,6 +364,9 @@ multicornGetForeignPaths(PlannerInfo *root,
 	pathes = lappend(pathes, create_foreignscan_path(root, baserel,
 		 	NULL,  /* default pathtarget */
 			baserel->rows,
+#if PG_VERSION_NUM >= 180000 // # of disabled_nodes added in PG 18, commit e22253467942fdb100087787c3e1e3a8620c54b2
+			0,
+#endif
 			planstate->startupCost,
 			baserel->rows * baserel->reltarget->width,
 			NIL,		/* no pathkeys */
@@ -400,6 +406,9 @@ multicornGetForeignPaths(PlannerInfo *root,
 			newpath = create_foreignscan_path(root, baserel,
 					NULL,  /* default pathtarget */
 					path->path.rows,
+#if PG_VERSION_NUM >= 180000 // # of disabled_nodes added in PG 18, commit e22253467942fdb100087787c3e1e3a8620c54b2
+					0,
+#endif
 					path->path.startup_cost, path->path.total_cost,
 					apply_pathkeys, NULL,
 					NULL,

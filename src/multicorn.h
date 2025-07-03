@@ -6,6 +6,9 @@
 #include "catalog/pg_type.h"
 #include "commands/defrem.h"
 #include "commands/explain.h"
+#if PG_VERSION_NUM >= 180000
+#include "commands/explain_state.h"
+#endif
 #include "foreign/fdwapi.h"
 #include "foreign/foreign.h"
 #include "funcapi.h"
