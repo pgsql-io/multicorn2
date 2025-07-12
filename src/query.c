@@ -714,6 +714,9 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 					root, baserel,
 				 	NULL,  /* default pathtarget */
 					nbrows,
+#if PG_VERSION_NUM >= 180000 // # of disabled_nodes added in PG 18, commit e22253467942fdb100087787c3e1e3a8620c54b2
+					0,
+#endif
 					startupCost,
 					nbrows * baserel->reltarget->width,
 					NIL, /* no pathkeys */
@@ -757,7 +760,11 @@ deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
 
 		if ((expr = multicorn_get_em_expr(ec, rel)))
 		{
+#if PG_VERSION_NUM >= 180000 // pk_strategy replaced w/ pkg_cmptype in PG 18, commit 8123e91f5aeb26c6e4cf583bb61c99281485af83
+			md->reversed = (key->pk_cmptype == COMPARE_GT);
+#else
 			md->reversed = (key->pk_strategy == BTGreaterStrategyNumber);
+#endif
 			md->nulls_first = key->pk_nulls_first;
 			md->key = key;
 
