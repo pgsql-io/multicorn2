@@ -37,7 +37,6 @@
         python313
       ];
       testPostgresVersions = with pkgs; [
-        postgresql_13
         postgresql_14
         postgresql_15
         postgresql_16
