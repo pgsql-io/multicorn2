@@ -27,22 +27,6 @@ Multicorn also includes, under the covers, **two** shared libraries:
 - `_utils.so` is a CPython extension which provides support for
   the previously mentioned `utils.py`.
 
-## Using in PGEDGE (see https://github.com/pgedge/pgedge)
-
-1.) Install pgEdge from the command line, in your home directory, with the curl command at the top of pgedge/pgedge
-
-2.) Change into the pgedge directory and install pgXX
-```bash
-cd pgedge
-./pgedge install pg17 --start
-./pgedge install multicorn2
-```
-
-3.) Use multicorn as you normally would AND you can install popular FDW's that use multicorn such as ElasticSerachFDW & BigQueryFDW
-```bash
-      ./pgedge install mqttclient
-```
-
 ## Building Multicorn2 against Postgres from Source
 
 It is built the same way all standard postgres extensions are built with following dependcies needing to be installed:
@@ -69,7 +53,7 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-### Download & Compile Postgres 13+ source code
+### Download & Compile Postgres 14+ source code
 ```bash
 cd ~
 wget https://ftp.postgresql.org/pub/source/v17.0/postgresql-17.0.tar.gz
@@ -91,7 +75,7 @@ make
 sudo make install
 ```
 
-### Create Multicorn2 Extension
+### Create Multicorn Extension
 In your running instance of Postgres from the PSQL command line
 ```sql
 CREATE EXTENSION multicorn;
@@ -104,7 +88,7 @@ When using a pre-built Postgres installed using your OS package manager, you wil
 ### Install Dependencies for Building the Multicorn2 extension
 On Debian/Ubuntu systems:
 ```bash
-sudo apt install -y build-essential ... postgresql-server-dev-13
+sudo apt install -y build-essential ... postgresql-server-dev-17
 sudo apt install -y python3 python3-dev python3-setuptools python3-pip
 ```
 
@@ -126,7 +110,7 @@ sudo make install
 
 Note that the last step installs both the extension into Postgres and also the Python part. The latter is done using "pip install", and so can be undone using "pip uninstall".
 
-### Create Multicorn2 Extension
+### Create Multicorn Extension
 In your running instance of Postgres from the PSQL command line
 ```sql
 CREATE EXTENSION multicorn;
