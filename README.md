@@ -4,9 +4,9 @@ Multicorn2
 
 Multicorn Python3 Foreign Data Wrapper (FDW) for Postgresql.  Tested on Linux w/ Python 3.9-3.13 & Postgres 14-18.
 
-Testing is underway for supporting Python 3.13 and is expected in v3.1.  v3.1 is also expected to support pg18.  
-Newest versions of major linux distro's (Ubuntu 24.04 & EL10) are all still using Python 3.12 so sticking with using 3.12 is advised in the short run.  
-It's also advised that if you are still using EL9, and it's default Python 3.9, upgrade to using Python 3.12 in a venv because Python 3.9 is already deprecated and will soon be unsupported by this extension.
+Our latest release, v3.1, supports thru pg18 (and has some testing against Python 3.13).
+Newest versions of major linux distro's (Ubuntu 24.04 & EL10) ship with Python 3.12 so sticking with using 3.12 (instead of 3.13) is advised in the short run.  
+Python 3.9 is already deprecated by the CPython community and will soon be unsupported by this extension; use 3.10 thru 3.12 instead.
 
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
 
@@ -57,9 +57,9 @@ source venv/bin/activate
 ### Download & Compile Postgres 14+ source code
 ```bash
 cd ~
-wget https://ftp.postgresql.org/pub/source/v17.0/postgresql-17.0.tar.gz
-tar -xvf postgresql-17.0.tar.gz
-cd postgresql-17.0
+wget https://ftp.postgresql.org/pub/source/v18beta2/postgresql-18beta2.tar.gz
+tar -xvf postgresql-18beta2.tar.gz
+cd postgresql-18beta2
 ./configure
 make
 sudo make install
@@ -68,10 +68,10 @@ sudo make install
 ### Download & Compile Multicorn2
 ```bash
 set PATH=/usr/local/pgsql/bin:$PATH
-cd ~/postgresql-17.0/contrib
-wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v3.0.tar.gz
-tar -xvf v3.0.tar.gz
-cd multicorn2-3.0
+cd ~/postgresql-18beta2/contrib
+wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v3.1beta1.tar.gz
+tar -xvf v3.1beta1.tar.gz
+cd multicorn2-3.1beta1
 make
 sudo make install
 ```
@@ -102,9 +102,9 @@ sudo yum -y install git python3 python3-devel python3-pip
 
 ### Download & Compile Multicorn2
 ```bash
-wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v3.0.tar.gz
-tar -xvf v3.0.tar.gz
-cd multicorn2-3.0
+wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v3.1beta1.tar.gz
+tar -xvf v3.1beta1.tar.gz
+cd multicorn2-3.1beta1
 make
 sudo make install
 ```
@@ -141,7 +141,7 @@ This can be slow to run when it is first executed (15-30 minutes) due to the nee
 To run a faster test suite against a specific version of Python and PostgreSQL, run:
 
 ```bash
-nix build .#testSuites.test_pg13_py39
+nix build .#testSuites.test_pg18_py312
 ```
 
 ### Adding new Python or PostgreSQL versions to the test suite

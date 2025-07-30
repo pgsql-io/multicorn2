@@ -1,12 +1,7 @@
 3.1:
-   - opened up for development
    - drop support for Postgres versions prior to 14
-   - confirm support for Python 3.12
-   - confirm support for pg17
-   - add prelim support for Python 3.13
-   - add prelim support for pg18
-
-
+   - add support for Python 3.13
+   - add support for pg18
 
 3.0:
    - drop support for Python 3 versions prior to 3.9
