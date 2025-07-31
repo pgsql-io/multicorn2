@@ -1,6 +1,4 @@
-*****
-Usage
-*****
+# Usage
 
 The multicorn2 foreign data wrapper is not different from other foreign data
 wrappers.
@@ -10,7 +8,6 @@ To use it, you have to:
 - Create the extension in the target database.
   As a PostgreSQL super user, run the following SQL:
 
-  .. code-block:: sql
 
       CREATE EXTENSION multicorn;
 
@@ -19,8 +16,6 @@ To use it, you have to:
   In the SQL ``OPTIONS`` clause, you must provide an options named wrapper,
   containing the fully-qualified class name of the concrete python foreign data
   wrapper you want to use:
-
-  .. code-block:: sql
 
       CREATE SERVER multicorn_imap FOREIGN DATA WRAPPER multicorn
       options (

@@ -1,6 +1,4 @@
-***
-API
-***
+# API
 
 The API is split into two modules: the ``multicorn`` module and the
 `utils` module:
@@ -11,16 +9,14 @@ The API is split into two modules: the ``multicorn`` module and the
     which are ultimately implemented as calls to the PostgreSQL API.
 
 
-Implementing an FDW
-===================
+## Implementing an FDW
 
 Implementing an FDW is as simple as implementing the
 :py:class:`~multicorn.ForeignDataWrapper` class.
 
 
 
-Required API
-------------
+### Required API
 
 .. py:currentmodule:: multicorn.ForeignDataWrapper
 
@@ -37,8 +33,7 @@ You have to implement the following methods:
           .. api_compat:: :read:
 
 
-Write API
----------
+### Write API
 
 To implement full write capabilites, the following property must be implemented:
 
@@ -58,8 +53,7 @@ In addition to that, you should implement each DML operation as you see fit:
           .. api_compat::
             :write:
 
-Transactional API
------------------
+### Transactional API
 
 Transactional Capabilities can be implemented with the following methods:
 
@@ -77,8 +71,7 @@ Transactional Capabilities can be implemented with the following methods:
             :transaction:
 
 
-Full API
-========
+### Full API
 
 .. autoclass:: multicorn.ForeignDataWrapper
    :special-members: __init__

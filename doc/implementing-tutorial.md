@@ -1,24 +1,17 @@
-.. _tutorial:
-
-*************************
-Tutorial: Writing an FDW
-*************************
+# Tutorial: Writing an FDW
 
 Multicorn provides a simple interface for writing foreign data wrappers: the
 ``multicorn.ForeignDataWrapper`` interface.
 
 Implementing a foreign data wrapper is as simple as inheriting from ``multicorn.ForeignDataWrapper`` and implemening the ``execute`` method.
 
-What are we trying to achieve ?
-===============================
+## What are we trying to achieve ?
 
 Supposing we want to implement a foreign data wrapper which only returns a set
 of 20 rows, containing in each column the name of the column itself concatenated
 with the number of the line.
 
 The goal of this tutorial is to be able to execute this:
-
-.. code-block:: sql
 
     CREATE FOREIGN TABLE constanttable (
         test character varying,
@@ -30,8 +23,6 @@ The goal of this tutorial is to be able to execute this:
     SELECT * from constanttable;
 
 And obtain this as a result:
-
-.. code-block:: bash
 
       test   |  test2   
     ---------+----------
@@ -57,8 +48,7 @@ And obtain this as a result:
      test 19 | test2 19
     (20 lignes)
 
-How do we do that ?
-===================
+## How do we do that ?
 
 The fdw described above is pretty simple, implementing it should be easy !
 
@@ -173,8 +163,7 @@ the line index.
 And that's it !
 
 
-Write API
-=========
+## Write API
 
 Since PostgreSQL 9.3, foreign data wrappers can implement a write API.
 
@@ -230,8 +219,7 @@ The commit method will be called just at commit time, while the rollback method
 will be called whenever the local transaction is rollbacked.
 
 
-Optimizations
-=============
+## Optimizations
 
 As was noted in the code commentaries, the execute methods accept a ``quals`` argument.
 This argument is a list of quals object, which are defined in `multicorn/__init__.py`_.
@@ -321,8 +309,7 @@ For example, informing the planner that a filter on a column may return exactly
 one row, instead of the full billion, may help it on deciding to use a
 nested-loop instead of a full sequential scan.
 
-Error reporting
-===============
+## Error reporting
 
 In the `multicorn.utils`_ module lies a simple utility function,
 ``log_to_postgres``.
@@ -371,8 +358,7 @@ It accepts three arguments:
     adding the missing option in the table creation statement``) 
 
 
-Foreign Data Wrapper lifecycle
-==============================
+## Foreign Data Wrapper lifecycle
 
 The foreign data wrapper associated to a table is instantiated on a per-process
 basis, and it happens when the first query is run against it.

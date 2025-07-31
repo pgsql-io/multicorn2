@@ -4,7 +4,7 @@ Multicorn2
 Synopsis
 --------
 
-Multicorn2 is a PostgreSQL 10++ extension allowing to write Foreign Data Wrappers
+Multicorn2 is a PostgreSQL 14++ extension allowing to write Foreign Data Wrappers
 in python.
 It is bundled with some foreign data wrappers.
 
