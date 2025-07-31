@@ -2,7 +2,7 @@
 # Multicorn2
 
 
-Multicorn2 is a PostgreSQL 14++ extension meant to make `Foreign Data Wrapper`
+Multicorn2 is a PostgreSQL extension meant to make `Foreign Data Wrapper`
 development easy, by allowing the programmer to use the Python programming
 language.
 
@@ -11,11 +11,10 @@ If you just want to use it as soon as possible, jump straight to the
 
 
 ## Table of Contents
-  - installation.md
-  - getting-started.md
-  - foreign-data-wrappers.md
-  - implementing-an-fdw.md
-  - third-party-fdw.md
-  - internals.md
-  - contribute.md
-
+  - [Installation](installation.md)
+  - [Getting Started](getting-started.md)
+  - [Foreign Data Wrappers](foreign-data-wrappers.md)
+  - [Implementing an FDW](implementing-an-fdw.md)
+  - [Third Party FDW's](third-party-fdw.md)
+  - [Internals](internals.md)
+  - [Contribute](contribute.md)

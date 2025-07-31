@@ -8,7 +8,6 @@ third-party modules available on the net.
 
 A FDW for accessing RethinkDB databases
 
-.. api_compat::
     :read:
     :write:
 
@@ -20,7 +19,7 @@ repository:
 
 Access data stored in Apache Hive tables.
 
-.. api_compat:: :read:
+ :read:
 
 repository:
   https://github.com/youngwookim/hive-fdw-for-postgresql
@@ -31,7 +30,6 @@ repository:
 
 A FDW for interacting with docker containers
 
-.. api_compat::
     :read:
     :write:
 
@@ -42,7 +40,6 @@ repository
 
 Access data using Facebook FQL API
 
-.. api_compat::
     :read:
 
 repository
@@ -52,7 +49,7 @@ repository
 
 Reads data from OpenStack / Telemetry.
 
-.. api_compat:: :read:
+ :read:
 
 repository
     https://github.com/hhamalai/telemetry-fdw
@@ -62,7 +59,7 @@ repository
 
 Reads data from CSV files stored on Amazon S3.
 
-.. api_compat:: :read:
+ :read:
 
 repository
   https://github.com/eligoenergy/s3csv_fdw.git
@@ -72,7 +69,7 @@ repository
 
 Reads data from JSON files stored on Amazon S3
 
-.. api_compat:: :read:
+ :read:
 
 repository
   https://github.com/blakedw/s3fdw.git
@@ -80,7 +77,7 @@ repository
 
 ## Database.com FDW
 
-.. api_compat:: :read:
+ :read:
 
 repository
   https://github.com/metadaddy-sfdc/Database.com-FDW-for-PostgreSQL.git
@@ -88,7 +85,7 @@ repository
 
 # pgCassandra FDW
 
-.. api_compat:: :read:
+ :read:
 
 repository
   https://github.com/wjch-krl/pgCassandra.git

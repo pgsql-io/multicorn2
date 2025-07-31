@@ -29,4 +29,4 @@ the needed options.
 Each foreign data wrapper supports its own set of options, and may interpret the
 columns definitions differently.
 
-You should look at the documentation for the specific :doc:`Foreign Data Wraper documentation <foreign-data-wrappers>`
+You should look at the documentation for the specific [Foreign Data Wraper documentation](foreign-data-wrappers.md)

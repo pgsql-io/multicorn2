@@ -1,7 +1,8 @@
 3.1:
-   - drop support for Postgres versions prior to 14
    - add support for Python 3.13
    - add support for pg18
+   - drop support for Postgres versions prior to 14
+   - rework usage Doc from Sphinx into simple Markdown
 
 3.0:
    - drop support for Python 3 versions prior to 3.9
