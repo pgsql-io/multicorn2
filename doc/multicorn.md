@@ -25,8 +25,8 @@ to use:
 
 
     CREATE SERVER my_server_name FOREIGN DATA WRAPPER multicorn
-    options (
-        wrapper 'python.class.Name'
+    OPTIONS (
+        WRAPPER 'python.class.Name'
     )
 
 
@@ -38,8 +38,8 @@ Ex, for the Imap foreign data wrapper:
 
 
     CREATE SERVER multicorn_imap FOREIGN DATA WRAPPER multicorn
-        options (
-        wrapper 'multicorn.imapfdw.ImapFdw'
+        OPTIONS (
+        WRAPPER 'multicorn.imapfdw.ImapFdw'
     );
 
 
@@ -49,15 +49,13 @@ The foreign table must be supplied its required options.
 
 Ex:
 
-
-
-    create foreign table gmail (                                                                 
+    CREATE FOREIGN TABLE gmail (                                                                 
         "Message-ID" character varying,
         "From" character varying,
         "Subject" character varying,
         "payload" character varying,
         "flags" character varying[],
-        "To" character varying) server multicorn_imap options (
+        "To" character varying) SERVER multicorn_imap OPTIONS (
             host 'imap.gmail.com',
             port '465', 
             payload_column 'payload', 

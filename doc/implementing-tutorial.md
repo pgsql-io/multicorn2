@@ -16,11 +16,11 @@ The goal of this tutorial is to be able to execute this:
     CREATE FOREIGN TABLE constanttable (
         test character varying,
         test2 character varying
-    ) server multicorn_srv options (
-        wrapper 'myfdw.ConstantForeignDataWrapper'
+    ) server multicorn_srv OPTIONS (
+        WRAPPER 'myfdw.ConstantForeignDataWrapper'
     )
 
-    SELECT * from constanttable;
+    SELECT * FROM constanttable;
 ```
 And obtain this as a result:
 
