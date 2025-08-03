@@ -517,7 +517,7 @@ void extractClauseFromVar(
 #if PG_VERSION_NUM >= 140000
     PlannerInfo *root,
 #endif
-	Relids base_relids, Var *node, List **quals)
+	Relids base_relids, Var *var, List **quals)
 {
 	MulticornBaseQual *result;
 	Expr *true_expr;
@@ -525,7 +525,7 @@ void extractClauseFromVar(
 #if PG_VERSION_NUM >= 140000
 		root,
 #endif
-		(Node *) node), base_relids)) {
+		(Node *) var), base_relids)) {
         return;
 	}
 
