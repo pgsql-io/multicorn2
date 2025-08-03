@@ -34,6 +34,8 @@ void extractClauseFromScalarArrayOpExpr(
     ScalarArrayOpExpr *node,
     List **quals);
 
+void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals);
+
 char	   *getOperatorString(Oid opoid);
 
 MulticornBaseQual *makeQual(AttrNumber varattno, char *opname, Expr *value,
@@ -319,6 +321,11 @@ extractRestrictions(
 #endif
 									base_relids, (ScalarArrayOpExpr *) node, quals);
 			break;
+
+			case T_BooleanTest:
+				extractClauseFromBooleanTest(base_relids, (BooleanTest *) node, quals);
+			break;
+
 		default:
 			{
 				ereport(WARNING,
@@ -446,6 +453,50 @@ extractClauseFromNullTest(Relids base_relids,
 	}
 }
 
+/*
+ *	Convert a "BoolExpr" (IS TRUE, IS FALSE, IS NOT TRUE, IS NOT FALSE)
+ *	to the corresponding qualifier.
+ */
+void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals) {
+	elog(DEBUG3, "entering extractClauseFromBooleanTest()");
+	if (IsA(node->arg, Var))
+	{
+		Var		   *var = (Var *) node->arg;
+		MulticornBaseQual *result;
+		char	   *opname = NULL;
+		Expr	   *val;
+
+		if (var->varattno < 1)
+		{
+			return;
+		}
+		switch (node->booltesttype)
+		{
+			case IS_TRUE:
+				opname = "IS";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(true), false, true);
+				break;
+			case IS_FALSE:
+				opname = "IS";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(false), false, true);
+				break;
+			case IS_NOT_TRUE:
+				opname = "IS NOT";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(true), false, true);
+				break;
+			case IS_NOT_FALSE:
+				opname = "IS NOT";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(true), false, true);
+				break;
+			default:
+				/* IS UNKNOWN, IS NOT UNKNOWN */
+				elog(ERROR, "unsupported boolean test type %d", node->booltesttype);
+		}
+		result = makeQual(var->varattno, opname,
+						  (Expr *) val, false, false);
+		*quals = lappend(*quals, result);
+	}
+}
 
 
 /*
