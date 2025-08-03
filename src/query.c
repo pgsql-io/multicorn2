@@ -329,7 +329,11 @@ extractRestrictions(
 			break;
 
 		case T_Var:
-		    extractClauseFromVar(base_relids, (Var *) node, quals);
+		    extractClauseFromVar(
+#if PG_VERSION_NUM >= 140000
+				(PlannerInfo *) root,
+#endif
+				base_relids, (Var *) node, quals);
     		break;
 
 		default:
@@ -463,7 +467,8 @@ extractClauseFromNullTest(Relids base_relids,
  *	Convert a "BoolExpr" (IS TRUE, IS FALSE, IS NOT TRUE, IS NOT FALSE)
  *	to the corresponding qualifier.
  */
-void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals) {
+void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals) 
+{
 	elog(DEBUG3, "entering extractClauseFromBooleanTest()");
 	if (IsA(node->arg, Var))
 	{
@@ -504,9 +509,17 @@ void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **
 	}
 }
 
-void extractClauseFromVar(Relids base_relids, Var *node, List **quals)
+void extractClauseFromVar(
+#if PG_VERSION_NUM >= 140000
+    PlannerInfo *root,
+#endif
+	Relids base_relids, Var *node, List **quals)
 {
-    if (!bms_is_subset(pull_varnos((Node *) node), base_relids))
+    if (!bms_is_subset(pull_varnos(
+#if PG_VERSION_NUM >= 140000
+		root,
+#endif
+		(Node *) node), base_relids))
         return;
 
     RestrictInfo *info = makeSimpleRestrictInfo(
