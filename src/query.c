@@ -526,16 +526,16 @@ void extractClauseFromVar(
 		(Node *) node), base_relids))
         return;
 
-    RestrictInfo *info = makeSimpleRestrictInfo(
-        (Expr *) node,
-        true,
-        false,
-        false,
-        NULL,
-        base_relids,
-        NULL);
-
-    *quals = lappend(*quals, info);
+	Expr *true_expr = (Expr *) makeConst(BOOLOID,  // Type OID for boolean
+			-1,       // typmod
+			InvalidOid, // collation
+			sizeof(bool), // constlen
+			BoolGetDatum(true), // the actual value
+			false,     // isnull
+			true);     // constbyval
+			
+	result = makeQual(var->varattno, "=", true_expr, false, false);
+    *quals = lappend(*quals, result);
 }
 
 /*
