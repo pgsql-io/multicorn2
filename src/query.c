@@ -519,21 +519,24 @@ void extractClauseFromVar(
 #endif
 	Relids base_relids, Var *node, List **quals)
 {
+	MulticornBaseQual *result;
+	Expr *true_expr;
     if (!bms_is_subset(pull_varnos(
 #if PG_VERSION_NUM >= 140000
 		root,
 #endif
-		(Node *) node), base_relids))
+		(Node *) node), base_relids)) {
         return;
+	}
 
-	Expr *true_expr = (Expr *) makeConst(BOOLOID,  // Type OID for boolean
-			-1,       // typmod
-			InvalidOid, // collation
-			sizeof(bool), // constlen
-			BoolGetDatum(true), // the actual value
-			false,     // isnull
-			true);     // constbyval
-			
+	true_expr = (Expr *) makeConst(BOOLOID,  // Type OID for boolean
+		-1,       // typmod
+		InvalidOid, // collation
+		sizeof(bool), // constlen
+		BoolGetDatum(true), // the actual value
+		false,     // isnull
+		true);     // constbyval
+
 	result = makeQual(var->varattno, "=", true_expr, false, false);
     *quals = lappend(*quals, result);
 }
