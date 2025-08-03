@@ -36,7 +36,11 @@ void extractClauseFromScalarArrayOpExpr(
 
 void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals);
 
-void extractClauseFromVar(Relids base_relids, Var *node, List **quals);
+void extractClauseFromVar(
+#if PG_VERSION_NUM >= 140000
+    PlannerInfo *root,
+#endif
+	Relids base_relids, Var *node, List **quals);
 
 char *getOperatorString(Oid opoid);
 
