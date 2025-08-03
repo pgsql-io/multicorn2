@@ -36,7 +36,9 @@ void extractClauseFromScalarArrayOpExpr(
 
 void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals);
 
-char	   *getOperatorString(Oid opoid);
+void extractClauseFromVar(Relids base_relids, Var *node, List **quals);
+
+char *getOperatorString(Oid opoid);
 
 MulticornBaseQual *makeQual(AttrNumber varattno, char *opname, Expr *value,
 		 bool isarray,
@@ -322,9 +324,13 @@ extractRestrictions(
 									base_relids, (ScalarArrayOpExpr *) node, quals);
 			break;
 
-			case T_BooleanTest:
-				extractClauseFromBooleanTest(base_relids, (BooleanTest *) node, quals);
+		case T_BooleanTest:
+			extractClauseFromBooleanTest(base_relids, (BooleanTest *) node, quals);
 			break;
+
+		case T_Var:
+		    extractClauseFromVar(base_relids, (Var *) node, quals);
+    		break;
 
 		default:
 			{
@@ -498,6 +504,22 @@ void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **
 	}
 }
 
+void extractClauseFromVar(Relids base_relids, Var *node, List **quals)
+{
+    if (!bms_is_subset(pull_varnos((Node *) node), base_relids))
+        return;
+
+    RestrictInfo *info = makeSimpleRestrictInfo(
+        (Expr *) node,
+        true,
+        false,
+        false,
+        NULL,
+        base_relids,
+        NULL);
+
+    *quals = lappend(*quals, info);
+}
 
 /*
  *	Returns a "Value" node containing the string name of the column from a var.
