@@ -5,7 +5,7 @@ Multicorn2
 Multicorn Python3 Foreign Data Wrapper (FDW) for Postgresql.  Tested on Linux w/ Python 3.9-3.13 & Postgres 14-18.
 
 Our latest release, v3.1, supports thru pg18 (and has some testing against Python 3.13).
-Newest versions of major linux distro's (Ubuntu 24.04 & EL10) ship with Python 3.12 so sticking with using 3.12 (instead of 3.13) is advised in the short run.  
+Newest versions of major linux distro's (Ubuntu 24.04 & EL10) ship with Python 3.12 so sticking with using 3.12 (instead of 3.13) is advised in the short run.
 Python 3.9 is already deprecated by the CPython community and will soon be unsupported by this extension; use 3.10 thru 3.12 instead.
 
 The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL server.
@@ -90,7 +90,7 @@ When using a pre-built Postgres installed using your OS package manager, you wil
 On Debian/Ubuntu systems:
 ```bash
 sudo apt install -y build-essential ... postgresql-server-dev-17
-sudo apt install -y python3 python3-dev python3-setuptools python3-pip
+sudo apt install -y python3 python3-dev python3-setuptools python3-pip python-is-python3
 ```
 
 On CentOS/Rocky/Redhat systems:
@@ -128,7 +128,24 @@ However, both can be installed on the same system without conflict.  Since PL/Py
 
 ## Integration tests
 
-multicorn2 has an extensive suite of integration tests which run against live PostgreSQL servers.  In order to manage the matrix of supported versions of Python and PostgreSQL, the Nix package manager can be used to provide all the dependencies and run all the tests.  The Nix package manager is supported on Linux, MacOS, and Windows Subsystem for Linux.  To install Nix, follow the instructions at https://nixos.org/download/.
+multicorn2 has an extensive suite of integration tests which run against live PostgreSQL servers.
+
+### Running Tests
+
+After following the development environment steps in [Install Dependencies for Building the Multicorn2 extension](#install-dependencies-for-building-postgres--the-multicorn2-extension), the tests can be invoked by running `make easycheck`.
+
+`easycheck` does not compile or install the multicorn2 module.  A typical development cycle at this point would be to build & install the updated module into the system's PostgreSQL server, and then run `easycheck`:
+
+```
+sudo make install
+PATH=$PATH:$(pg_config --bindir) make easycheck
+```
+
+(`PATH=$PATH:$(pg_config --bindir)` is added because in some systems, specifically Ubuntu, some commands like `initdb` are not available on the `PATH` by default)
+
+### Test Matrix
+
+In order to manage the matrix of supported versions of Python and PostgreSQL, the Nix package manager can be used to provide all the dependencies and run all the tests.  The Nix package manager is supported on Linux, MacOS, and Windows Subsystem for Linux.  To install Nix, follow the instructions at https://nixos.org/download/.
 
 Once Nix is installed, you can run the tests with the following commands.  To run a complete regression test against all supported versions of Python and PostgreSQL, run:
 
@@ -138,13 +155,13 @@ nix build .#allTestSuites
 
 This can be slow to run when it is first executed (15-30 minutes) due to the need to rebuild PostgreSQL with specific versions of Python, to support the plpython extension which is used in some tests.  Subsequent runs will be faster (under 5 minutes) as the build artifacts are cached.
 
-To run a faster test suite against a specific version of Python and PostgreSQL, run:
+To run a subset of the test suite against a specific version of PostgreSQL and Python, customize the version numbers and run a build such as:
 
 ```bash
 nix build .#testSuites.test_pg18_py312
 ```
 
-### Adding new Python or PostgreSQL versions to the test suite
+#### Adding new Python or PostgreSQL versions to the test suite
 
 1. Perform a `nix flake update` in order to provide access to the latest packages available from the Nix package manager.
 
