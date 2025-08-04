@@ -36,6 +36,12 @@ void extractClauseFromScalarArrayOpExpr(
 
 void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals);
 
+void extractClauseFromBoolExpr(
+#if PG_VERSION_NUM >= 140000
+	PlannerInfo *root,
+#endif
+	Relids base_relids, BoolExpr *node, List **quals);
+
 void extractClauseFromVar(
 #if PG_VERSION_NUM >= 140000
 	PlannerInfo *root,
@@ -340,6 +346,13 @@ extractRestrictions(
 				base_relids, (Var *) node, quals);
 			break;
 
+		case T_BoolExpr:
+			extractClauseFromBoolExpr(
+#if PG_VERSION_NUM >= 140000
+				root,
+#endif
+				base_relids, (BoolExpr *) node, quals);
+			break;
 		default:
 			{
 				ereport(WARNING,
@@ -547,6 +560,35 @@ void extractClauseFromVar(
 	result = makeQual(var->varattno, "=", true_expr, false, false);
 	*quals = lappend(*quals, result);
 }
+
+void extractClauseFromBoolExpr(
+#if PG_VERSION_NUM >= 140000
+	PlannerInfo *root,
+#endif
+	Relids base_relids, BoolExpr *bexpr, List **quals)
+{
+	if (!bms_is_subset(pull_varnos(
+#if PG_VERSION_NUM >= 140000
+		root,
+#endif
+		(Node *) bexpr), base_relids)) {
+		return;
+	}
+
+	if (bexpr->boolop == NOT_EXPR &&
+        list_length(bexpr->args) == 1 &&
+        IsA(linitial(bexpr->args), Var)) {
+
+        Var *var = (Var *) linitial(bexpr->args);
+		Expr *true_expr = (Expr *) makeConst(
+			BOOLOID, -1, InvalidOid, sizeof(bool),
+			BoolGetDatum(true), false, true);
+
+		MulticornBaseQual *result = makeQual(
+			var->varattno, "<>", true_expr, false, false);
+
+		*quals = lappend(*quals, result);
+    }}
 
 /*
  *	Returns a "Value" node containing the string name of the column from a var.
