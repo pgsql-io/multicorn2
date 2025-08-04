@@ -16,11 +16,11 @@
 
 void extractClauseFromOpExpr(
 #if PG_VERSION_NUM >= 140000
-    PlannerInfo *root,
+	PlannerInfo *root,
 #endif
-    Relids base_relids,
-    OpExpr *node,
-    List **quals);
+	Relids base_relids,
+	OpExpr *node,
+	List **quals);
 
 void extractClauseFromNullTest(Relids base_relids,
 						  NullTest *node,
@@ -28,13 +28,27 @@ void extractClauseFromNullTest(Relids base_relids,
 
 void extractClauseFromScalarArrayOpExpr(
 #if PG_VERSION_NUM >= 140000
-    PlannerInfo *root,
+	PlannerInfo *root,
 #endif
-    Relids base_relids,
-    ScalarArrayOpExpr *node,
-    List **quals);
+	Relids base_relids,
+	ScalarArrayOpExpr *node,
+	List **quals);
 
-char	   *getOperatorString(Oid opoid);
+void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals);
+
+void extractClauseFromBoolExpr(
+#if PG_VERSION_NUM >= 140000
+	PlannerInfo *root,
+#endif
+	Relids base_relids, BoolExpr *node, List **quals);
+
+void extractClauseFromVar(
+#if PG_VERSION_NUM >= 140000
+	PlannerInfo *root,
+#endif
+	Relids base_relids, Var *node, List **quals);
+
+char *getOperatorString(Oid opoid);
 
 MulticornBaseQual *makeQual(AttrNumber varattno, char *opname, Expr *value,
 		 bool isarray,
@@ -319,6 +333,26 @@ extractRestrictions(
 #endif
 									base_relids, (ScalarArrayOpExpr *) node, quals);
 			break;
+
+		case T_BooleanTest:
+			extractClauseFromBooleanTest(base_relids, (BooleanTest *) node, quals);
+			break;
+
+		case T_Var:
+			extractClauseFromVar(
+#if PG_VERSION_NUM >= 140000
+				(PlannerInfo *) root,
+#endif
+				base_relids, (Var *) node, quals);
+			break;
+
+		case T_BoolExpr:
+			extractClauseFromBoolExpr(
+#if PG_VERSION_NUM >= 140000
+				root,
+#endif
+				base_relids, (BoolExpr *) node, quals);
+			break;
 		default:
 			{
 				ereport(WARNING,
@@ -343,9 +377,9 @@ extractRestrictions(
 void
 extractClauseFromOpExpr(
 #if PG_VERSION_NUM >= 140000
-                        PlannerInfo *root,
+						PlannerInfo *root,
 #endif
-                        Relids base_relids, OpExpr *op, List **quals)
+						Relids base_relids, OpExpr *op, List **quals)
 {
 	Var		   *left;
 	Expr	   *right;
@@ -378,11 +412,11 @@ extractClauseFromOpExpr(
 void
 extractClauseFromScalarArrayOpExpr(
 #if PG_VERSION_NUM >= 140000
-    PlannerInfo *root,
+	PlannerInfo *root,
 #endif
-    Relids base_relids,
-    ScalarArrayOpExpr *op,
-    List **quals)
+	Relids base_relids,
+	ScalarArrayOpExpr *op,
+	List **quals)
 {
 	Var		   *left;
 	Expr	   *right;
@@ -396,9 +430,9 @@ extractClauseFromScalarArrayOpExpr(
 		if (!(contain_volatile_functions((Node *) right) ||
 			  bms_is_subset(base_relids, pull_varnos(
 #if PG_VERSION_NUM >= 140000
-                                              root,
+											  root,
 #endif
-                                              (Node *) right))))
+											  (Node *) right))))
 
 		{
 			*quals = lappend(*quals, makeQual(left->varattno,
@@ -446,7 +480,115 @@ extractClauseFromNullTest(Relids base_relids,
 	}
 }
 
+/*
+ *	Convert a "BooleanTest" (IS TRUE, IS FALSE, IS NOT TRUE, IS NOT FALSE)
+ *	to the corresponding qualifier.
+ */
+void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals) 
+{
+	elog(DEBUG3, "entering extractClauseFromBooleanTest()");
+	if (IsA(node->arg, Var))
+	{
+		Var		   *var = (Var *) node->arg;
+		MulticornBaseQual *result;
+		char	   *opname = NULL;
+		Expr	   *val;
 
+		if (var->varattno < 1)
+		{
+			return;
+		}
+		switch (node->booltesttype)
+		{
+			case IS_TRUE:
+				opname = "IS";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(true), false, true);
+				break;
+			case IS_FALSE:
+				opname = "IS";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(false), false, true);
+				break;
+			case IS_NOT_TRUE:
+				opname = "IS NOT";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(true), false, true);
+				break;
+			case IS_NOT_FALSE:
+				opname = "IS NOT";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(true), false, true);
+				break;
+			case IS_UNKNOWN:
+				opname = "IS";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), (Datum)0, true, true);
+				break;
+			case IS_NOT_UNKNOWN:
+				opname = "IS NOT";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), (Datum)0, true, true);
+				break;
+			default:
+				elog(ERROR, "unsupported boolean test type %d", node->booltesttype);
+		}
+		result = makeQual(var->varattno, opname,
+						  (Expr *) val, false, false);
+		*quals = lappend(*quals, result);
+	}
+}
+
+void extractClauseFromVar(
+#if PG_VERSION_NUM >= 140000
+	PlannerInfo *root,
+#endif
+	Relids base_relids, Var *var, List **quals)
+{
+	MulticornBaseQual *result;
+	Expr *true_expr;
+	if (!bms_is_subset(pull_varnos(
+#if PG_VERSION_NUM >= 140000
+		root,
+#endif
+		(Node *) var), base_relids)) {
+		return;
+	}
+
+	true_expr = (Expr *) makeConst(BOOLOID,  // Type OID for boolean
+		-1,       // typmod
+		InvalidOid, // collation
+		sizeof(bool), // constlen
+		BoolGetDatum(true), // the actual value
+		false,     // isnull
+		true);     // constbyval
+
+	result = makeQual(var->varattno, "=", true_expr, false, false);
+	*quals = lappend(*quals, result);
+}
+
+void extractClauseFromBoolExpr(
+#if PG_VERSION_NUM >= 140000
+	PlannerInfo *root,
+#endif
+	Relids base_relids, BoolExpr *bexpr, List **quals)
+{
+	if (!bms_is_subset(pull_varnos(
+#if PG_VERSION_NUM >= 140000
+		root,
+#endif
+		(Node *) bexpr), base_relids)) {
+		return;
+	}
+
+	if (bexpr->boolop == NOT_EXPR &&
+        list_length(bexpr->args) == 1 &&
+        IsA(linitial(bexpr->args), Var)) {
+
+        Var *var = (Var *) linitial(bexpr->args);
+		Expr *true_expr = (Expr *) makeConst(
+			BOOLOID, -1, InvalidOid, sizeof(bool),
+			BoolGetDatum(true), false, true);
+
+		MulticornBaseQual *result = makeQual(
+			var->varattno, "<>", true_expr, false, false);
+
+		*quals = lappend(*quals, result);
+    }}
 
 /*
  *	Returns a "Value" node containing the string name of the column from a var.
@@ -484,7 +626,7 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 	switch (value->type)
 	{
 		case T_Const:
-	                elog(DEBUG3, "T_Const");
+					elog(DEBUG3, "T_Const");
 			qual = palloc0(sizeof(MulticornConstQual));
 			qual->right_type = T_Const;
 			qual->typeoid = ((Const *) value)->consttype;
@@ -492,13 +634,13 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 			((MulticornConstQual *) qual)->isnull = ((Const *) value)->constisnull;
 			break;
 		case T_Var:
-	                elog(DEBUG3, "T_Var");
+					elog(DEBUG3, "T_Var");
 			qual = palloc0(sizeof(MulticornVarQual));
 			qual->right_type = T_Var;
 			((MulticornVarQual *) qual)->rightvarattno = ((Var *) value)->varattno;
 			break;
 		default:
-	                elog(DEBUG3, "default");
+					elog(DEBUG3, "default");
 			qual = palloc0(sizeof(MulticornParamQual));
 			qual->right_type = T_Param;
 			((MulticornParamQual *) qual)->expr = value;

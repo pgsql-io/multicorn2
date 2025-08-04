@@ -473,6 +473,66 @@ NOTICE:  ['test1', 'test2', 'test3']
 -------+-------+-------
 (0 rows)
 
+-- Test boolean operation pushdown
+ALTER FOREIGN TABLE testmulticorn alter test1 type bool;
+select * from testmulticorn where test1;
+NOTICE:  [('option1', 'option1'), ('test_type', 'iter_none'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'boolean'), ('test2', 'bytea'), ('test3', 'money')]
+NOTICE:  [test1 = t]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
+select * from testmulticorn where NOT test1;
+NOTICE:  [test1 <> t]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 = TRUE;
+NOTICE:  [test1 = t]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 = FALSE;
+NOTICE:  [test1 <> t]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 IS TRUE;
+NOTICE:  [test1 IS t]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 IS FALSE;
+NOTICE:  [test1 IS f]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 IS UNKNOWN;
+NOTICE:  [test1 IS None]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 IS NOT UNKNOWN;
+NOTICE:  [test1 IS NOT None]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
 DROP USER MAPPING FOR current_user SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 3 other objects
