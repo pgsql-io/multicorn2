@@ -16,11 +16,11 @@
 
 void extractClauseFromOpExpr(
 #if PG_VERSION_NUM >= 140000
-    PlannerInfo *root,
+	PlannerInfo *root,
 #endif
-    Relids base_relids,
-    OpExpr *node,
-    List **quals);
+	Relids base_relids,
+	OpExpr *node,
+	List **quals);
 
 void extractClauseFromNullTest(Relids base_relids,
 						  NullTest *node,
@@ -28,17 +28,17 @@ void extractClauseFromNullTest(Relids base_relids,
 
 void extractClauseFromScalarArrayOpExpr(
 #if PG_VERSION_NUM >= 140000
-    PlannerInfo *root,
+	PlannerInfo *root,
 #endif
-    Relids base_relids,
-    ScalarArrayOpExpr *node,
-    List **quals);
+	Relids base_relids,
+	ScalarArrayOpExpr *node,
+	List **quals);
 
 void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals);
 
 void extractClauseFromVar(
 #if PG_VERSION_NUM >= 140000
-    PlannerInfo *root,
+	PlannerInfo *root,
 #endif
 	Relids base_relids, Var *node, List **quals);
 
@@ -333,12 +333,12 @@ extractRestrictions(
 			break;
 
 		case T_Var:
-		    extractClauseFromVar(
+			extractClauseFromVar(
 #if PG_VERSION_NUM >= 140000
 				(PlannerInfo *) root,
 #endif
 				base_relids, (Var *) node, quals);
-    		break;
+			break;
 
 		default:
 			{
@@ -364,9 +364,9 @@ extractRestrictions(
 void
 extractClauseFromOpExpr(
 #if PG_VERSION_NUM >= 140000
-                        PlannerInfo *root,
+						PlannerInfo *root,
 #endif
-                        Relids base_relids, OpExpr *op, List **quals)
+						Relids base_relids, OpExpr *op, List **quals)
 {
 	Var		   *left;
 	Expr	   *right;
@@ -399,11 +399,11 @@ extractClauseFromOpExpr(
 void
 extractClauseFromScalarArrayOpExpr(
 #if PG_VERSION_NUM >= 140000
-    PlannerInfo *root,
+	PlannerInfo *root,
 #endif
-    Relids base_relids,
-    ScalarArrayOpExpr *op,
-    List **quals)
+	Relids base_relids,
+	ScalarArrayOpExpr *op,
+	List **quals)
 {
 	Var		   *left;
 	Expr	   *right;
@@ -417,9 +417,9 @@ extractClauseFromScalarArrayOpExpr(
 		if (!(contain_volatile_functions((Node *) right) ||
 			  bms_is_subset(base_relids, pull_varnos(
 #if PG_VERSION_NUM >= 140000
-                                              root,
+											  root,
 #endif
-                                              (Node *) right))))
+											  (Node *) right))))
 
 		{
 			*quals = lappend(*quals, makeQual(left->varattno,
@@ -468,7 +468,7 @@ extractClauseFromNullTest(Relids base_relids,
 }
 
 /*
- *	Convert a "BoolExpr" (IS TRUE, IS FALSE, IS NOT TRUE, IS NOT FALSE)
+ *	Convert a "BooleanTest" (IS TRUE, IS FALSE, IS NOT TRUE, IS NOT FALSE)
  *	to the corresponding qualifier.
  */
 void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **quals) 
@@ -503,8 +503,15 @@ void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **
 				opname = "IS NOT";
 				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(true), false, true);
 				break;
+			case IS_UNKNOWN:
+				opname = "IS";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), (Datum)0, true, true);
+				break;
+			case IS_NOT_UNKNOWN:
+				opname = "IS NOT";
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), (Datum)0, true, true);
+				break;
 			default:
-				/* IS UNKNOWN, IS NOT UNKNOWN */
 				elog(ERROR, "unsupported boolean test type %d", node->booltesttype);
 		}
 		result = makeQual(var->varattno, opname,
@@ -515,18 +522,18 @@ void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **
 
 void extractClauseFromVar(
 #if PG_VERSION_NUM >= 140000
-    PlannerInfo *root,
+	PlannerInfo *root,
 #endif
 	Relids base_relids, Var *var, List **quals)
 {
 	MulticornBaseQual *result;
 	Expr *true_expr;
-    if (!bms_is_subset(pull_varnos(
+	if (!bms_is_subset(pull_varnos(
 #if PG_VERSION_NUM >= 140000
 		root,
 #endif
 		(Node *) var), base_relids)) {
-        return;
+		return;
 	}
 
 	true_expr = (Expr *) makeConst(BOOLOID,  // Type OID for boolean
@@ -538,7 +545,7 @@ void extractClauseFromVar(
 		true);     // constbyval
 
 	result = makeQual(var->varattno, "=", true_expr, false, false);
-    *quals = lappend(*quals, result);
+	*quals = lappend(*quals, result);
 }
 
 /*
@@ -577,7 +584,7 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 	switch (value->type)
 	{
 		case T_Const:
-	                elog(DEBUG3, "T_Const");
+					elog(DEBUG3, "T_Const");
 			qual = palloc0(sizeof(MulticornConstQual));
 			qual->right_type = T_Const;
 			qual->typeoid = ((Const *) value)->consttype;
@@ -585,13 +592,13 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 			((MulticornConstQual *) qual)->isnull = ((Const *) value)->constisnull;
 			break;
 		case T_Var:
-	                elog(DEBUG3, "T_Var");
+					elog(DEBUG3, "T_Var");
 			qual = palloc0(sizeof(MulticornVarQual));
 			qual->right_type = T_Var;
 			((MulticornVarQual *) qual)->rightvarattno = ((Var *) value)->varattno;
 			break;
 		default:
-	                elog(DEBUG3, "default");
+					elog(DEBUG3, "default");
 			qual = palloc0(sizeof(MulticornParamQual));
 			qual->right_type = T_Param;
 			((MulticornParamQual *) qual)->expr = value;
