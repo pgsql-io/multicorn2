@@ -17,8 +17,8 @@
       # override the PG17 package with the beta release tag and version to build the beta.
       postgresql_18 = (pkgs.postgresql_17.override {
         version = "18.0";
-        rev = "refs/tags/REL_18_BETA1";
-        hash = "sha256-P86bVYfPzkwK/rcvUInYZew/pKejk58/IcnDGx/BWno=";
+        rev = "refs/tags/REL_18_BETA2";
+        hash = "sha256-n3NA0XJE2wvbOwrQOMXbzKn+7HLGAQSXgDU9ObhddZQ=";
       });
 
       requiredPythonPackages = ps: (
