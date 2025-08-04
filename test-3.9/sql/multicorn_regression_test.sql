@@ -107,5 +107,16 @@ ALTER FOREIGN TABLE testmulticorn add test3 money;
 SELECT * from testmulticorn where test3 = 12::money;
 SELECT * from testmulticorn where test1 = '12 €';
 
+-- Test boolean operation pushdown
+ALTER FOREIGN TABLE testmulticorn alter test1 type bool;
+select * from testmulticorn where test1;
+select * from testmulticorn where NOT test1;
+select * from testmulticorn where test1 = TRUE;
+select * from testmulticorn where test1 = FALSE;
+select * from testmulticorn where test1 IS TRUE;
+select * from testmulticorn where test1 IS FALSE;
+select * from testmulticorn where test1 IS UNKNOWN;
+select * from testmulticorn where test1 IS NOT UNKNOWN;
+
 DROP USER MAPPING FOR current_user SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
