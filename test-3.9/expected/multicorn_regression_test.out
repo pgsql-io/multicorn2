@@ -519,6 +519,20 @@ NOTICE:  ['test1', 'test2', 'test3']
 -------+-------+-------
 (0 rows)
 
+select * from testmulticorn where test1 IS NOT TRUE;
+NOTICE:  [test1 IS NOT t]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 IS NOT FALSE;
+NOTICE:  [test1 IS NOT f]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
 select * from testmulticorn where test1 IS UNKNOWN;
 NOTICE:  [test1 IS None]
 NOTICE:  ['test1', 'test2', 'test3']

@@ -115,6 +115,8 @@ select * from testmulticorn where test1 = TRUE;
 select * from testmulticorn where test1 = FALSE;
 select * from testmulticorn where test1 IS TRUE;
 select * from testmulticorn where test1 IS FALSE;
+select * from testmulticorn where test1 IS NOT TRUE;
+select * from testmulticorn where test1 IS NOT FALSE;
 select * from testmulticorn where test1 IS UNKNOWN;
 select * from testmulticorn where test1 IS NOT UNKNOWN;
 
