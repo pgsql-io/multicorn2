@@ -514,7 +514,7 @@ void extractClauseFromBooleanTest(Relids base_relids, BooleanTest *node, List **
 				break;
 			case IS_NOT_FALSE:
 				opname = "IS NOT";
-				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(true), false, true);
+				val = (Expr *) makeConst(BOOLOID, -1, InvalidOid, sizeof(bool), BoolGetDatum(false), false, true);
 				break;
 			case IS_UNKNOWN:
 				opname = "IS";
