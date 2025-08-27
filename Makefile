@@ -5,7 +5,7 @@ OBJS         =  src/errors.o src/python.o src/query.o src/multicorn.o
 
 DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 
-DOCS         = $(wildcard $(srcdir)/doc/*.md)
+DOCS         = $(wildcard $(srcdir)/doc/multicorn.md)
 
 EXTENSION    = multicorn
 EXTVERSION   = $(shell grep default_version $(srcdir)/$(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
