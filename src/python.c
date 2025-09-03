@@ -980,6 +980,16 @@ execute(ForeignScanState *node, ExplainState *es)
 		if(PyList_Size(p_pathkeys) > 0){
 			PyDict_SetItemString(kwargs, "sortkeys", p_pathkeys);
 		}
+        if(state->limit >= 0){
+            PyObject * limit = PyLong_FromLong((long)state->limit);   
+            PyDict_SetItemString(kwargs, "limit", limit);
+            Py_DECREF(limit);
+        }
+        if(state->offset >=0){
+            PyObject * offset = PyLong_FromLong((long)state->offset);
+            PyDict_SetItemString(kwargs, "offset", offset);
+            Py_DECREF(offset);
+        }
 		if(es != NULL){
 			PyObject * verbose;
 			if(es->verbose){
@@ -1611,6 +1621,29 @@ pathKeys(MulticornPlanState * state)
 	}
 	Py_DECREF(p_pathkeys);
 	return result;
+}
+
+/*
+ * Call the can_limit method from the python implementation and return the result.
+ */
+bool canLimit(MulticornPlanState * state, int limit, int offset)
+{
+    PyObject *py_limit = (limit < 0) ? Py_None : PyLong_FromLong(limit);
+    PyObject *py_offset = (offset < 0) ? Py_None : PyLong_FromLong(offset);
+    PyObject *result = PyObject_CallMethod(state->fdw_instance, "can_limit", "OO", py_limit, py_offset);
+    
+    // Only DECREF if we created new objects
+    if (limit >= 0) Py_DECREF(py_limit);
+    if (offset >= 0) Py_DECREF(py_offset);
+    
+    if (result) {
+        int is_true = PyObject_IsTrue(result);
+        Py_DECREF(result);
+        return (is_true == 1);
+    }
+    
+    errorCheck();
+    return false;
 }
 
 /*

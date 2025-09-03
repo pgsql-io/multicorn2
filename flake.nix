@@ -156,7 +156,7 @@
         pythonVersion = pkgs.lib.versions.majorMinor test_python.version;
         isPython312OrHigher = pkgs.lib.versionAtLeast pythonVersion "3.12";
 
-        baseTestCount = if pkgs.lib.versionOlder pgMajorVersion "14" then 18 else 19;
+        baseTestCount = if pkgs.lib.versionOlder pgMajorVersion "14" then 19 else 20;
         expectedTestCount = toString (baseTestCount - (if isPython312OrHigher then 1 else 0));
       in pkgs.stdenv.mkDerivation {
         name = "multicorn2-python-test-pg${test_postgresql.version}-py${test_python.version}";

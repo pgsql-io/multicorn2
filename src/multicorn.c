@@ -56,6 +56,12 @@ static void multicornGetForeignRelSize(PlannerInfo *root,
 static void multicornGetForeignPaths(PlannerInfo *root,
 						 RelOptInfo *baserel,
 						 Oid foreigntableid);
+static void multicornGetForeignUpperPaths(PlannerInfo *root, 
+                            UpperRelationKind stage,
+                            RelOptInfo *input_rel,
+                            RelOptInfo *output_rel, 
+                            void *extra);
+
 static ForeignScan *multicornGetForeignPlan(PlannerInfo *root,
 						RelOptInfo *baserel,
 						Oid foreigntableid,
@@ -119,6 +125,11 @@ static void multicorn_xact_callback(XactEvent event, void *arg);
 void	   *serializePlanState(MulticornPlanState * planstate);
 MulticornExecState *initializeExecState(void *internal_plan_state);
 
+static void add_foreign_final_paths(PlannerInfo *root,
+                                    RelOptInfo *input_rel,
+                                    RelOptInfo *final_rel,
+                                    FinalPathExtraData *extra);
+                                    
 /* Hash table mapping oid to fdw instances */
 HTAB	   *InstancesHash;
 
@@ -174,6 +185,7 @@ multicorn_handler(PG_FUNCTION_ARGS)
 	/* Plan phase */
 	fdw_routine->GetForeignRelSize = multicornGetForeignRelSize;
 	fdw_routine->GetForeignPaths = multicornGetForeignPaths;
+	fdw_routine->GetForeignUpperPaths = multicornGetForeignUpperPaths;
 	fdw_routine->GetForeignPlan = multicornGetForeignPlan;
 	fdw_routine->ExplainForeignScan = multicornExplainForeignScan;
 
@@ -359,7 +371,7 @@ multicornGetForeignPaths(PlannerInfo *root,
 	/* Try to find parameterized paths */
 	pathes = findPaths(root, baserel, possiblePaths, planstate->startupCost,
 			planstate, apply_pathkeys, deparsed_pathkeys);
-
+    
 	/* Add a simple default path */
 	pathes = lappend(pathes, create_foreignscan_path(root, baserel,
 		 	NULL,  /* default pathtarget */
@@ -403,6 +415,11 @@ multicornGetForeignPaths(PlannerInfo *root,
 		{
 			ForeignPath *newpath;
 
+            MulticornPathState *pathstate = (MulticornPathState *)calloc(1, sizeof(MulticornPathState));
+            pathstate->pathkeys = deparsed_pathkeys;
+            pathstate->limit = -1;
+            pathstate->offset = -1;
+        
 			newpath = create_foreignscan_path(root, baserel,
 					NULL,  /* default pathtarget */
 					path->path.rows,
@@ -415,13 +432,157 @@ multicornGetForeignPaths(PlannerInfo *root,
 #if PG_VERSION_NUM >= 170000
 					NULL,
 #endif
-					(void *) deparsed_pathkeys);
+					(void *)pathstate);
 
 			newpath->path.param_info = path->path.param_info;
 			add_path(baserel, (Path *) newpath);
 		}
 	}
 	errorCheck();
+}
+
+/*
+ * multicornGetForeignUpperPaths
+ *		Add paths for post-join operations like aggregation, grouping etc. if
+ *		corresponding operations are safe to push down.
+ *
+ * Right now, we only support limit/offset pushdown.  We'll add others later.
+ */
+static void multicornGetForeignUpperPaths(PlannerInfo *root, 
+                                          UpperRelationKind stage,
+                                          RelOptInfo *input_rel,
+                                          RelOptInfo *output_rel, 
+                                          void *extra)
+{
+    switch (stage)
+	{
+		case UPPERREL_FINAL:
+            add_foreign_final_paths(root, input_rel, output_rel, (FinalPathExtraData *)extra);
+			break;
+		default:
+			break;
+	}
+}
+
+/*
+ * add_foreign_final_paths
+ *		Add foreign paths for performing the final processing remotely.
+ *
+ * Given input_rel contains the source-data Paths.  The paths are added to the
+ * given final_rel.
+ */
+ static void
+ add_foreign_final_paths(PlannerInfo *root, RelOptInfo *input_rel,
+                         RelOptInfo *final_rel,
+                         FinalPathExtraData *extra)
+ {
+    Query *parse = root->parse;
+    MulticornPathState *pathstate;
+    MulticornPlanState *planstate;
+    ForeignPath *final_path;
+    int limitCount = -1;
+    int limitOffset = -1;
+    Path *cheapest_path;
+    List *deparsed_pathkeys = NIL;
+    List *applied_pathkeys = NIL;
+    ListCell *lc;
+
+    /* No work if there is no need to add a LIMIT node */
+    if (!extra->limit_needed)
+        return;
+    
+    /* We only support limits for SELECT commands */
+    if (parse->commandType != CMD_SELECT)
+        return;
+
+    /* We do not support pushing down FETCH FIRST .. WITH TIES */
+    if (parse->limitOption == LIMIT_OPTION_WITH_TIES)
+        return;
+
+    /* only push down constant LIMITs... */
+    if ((parse->limitCount && !IsA(parse->limitCount, Const)) || (parse->limitOffset && !IsA(parse->limitOffset, Const)))
+        return;
+
+    /* ... which are not NULL */
+    if((parse->limitCount && ((Const *)parse->limitCount)->constisnull) || (parse->limitOffset && ((Const *)parse->limitOffset)->constisnull))
+        return;
+
+    /* Extract the limit and offset */
+    if (parse->limitCount)
+        limitCount = DatumGetInt32(((Const *)parse->limitCount)->constvalue);
+    
+    if (parse->limitOffset)
+        limitOffset = DatumGetInt32(((Const *)parse->limitOffset)->constvalue);
+
+    /* Get the current input_rel and it's planstate */
+    planstate = input_rel->fdw_private;
+    // TODO: Maybe this isn't needed if we handle the previous stages correctly?
+    if (!planstate)
+    {
+        for (int i = 1; i < root->simple_rel_array_size; i++)
+        {
+            RelOptInfo *rel = root->simple_rel_array[i];
+            if (rel && rel->reloptkind == RELOPT_BASEREL)
+            {
+                planstate = rel->fdw_private;
+                input_rel->fdw_private = planstate;
+                input_rel = rel;
+                break;
+            }
+        }
+    }
+    
+    /* Extract pathkeys from the cheapest path's fdw_private if it exists */
+    cheapest_path = input_rel->cheapest_total_path;
+    if (cheapest_path && IsA(cheapest_path, ForeignPath))
+    {
+        ForeignPath *foreign_path = (ForeignPath *)cheapest_path;
+        if (foreign_path->fdw_private)
+        {
+            MulticornPathState *input_pathstate = (MulticornPathState *)foreign_path->fdw_private;
+            deparsed_pathkeys = input_pathstate->pathkeys;
+        }
+    }
+    
+    /* Extract the pathkeys from the input_rel */
+    foreach(lc, input_rel->pathlist)
+    {
+        Path *path = (Path *) lfirst(lc);
+        if (IsA(path, ForeignPath))
+        {
+            ForeignPath *fpath = (ForeignPath *) path;
+            if (fpath->path.pathkeys != NIL)
+                applied_pathkeys = fpath->path.pathkeys;
+        }
+    }
+ 
+    /* We only support limit/offset if the sort is completely pushed down */
+    if (!pathkeys_contained_in(root->sort_pathkeys, applied_pathkeys))
+        return;
+   
+    /* Check if Python FWD can push down the LIMIT/OFFSET */
+    if (!canLimit(planstate, limitCount, limitOffset))
+        return;
+
+    /* Create foreign final path with the correct number of rows, and include state for limit/offset pushdown */
+    pathstate = (MulticornPathState *)calloc(1, sizeof(MulticornPathState));
+    pathstate->pathkeys = deparsed_pathkeys;
+    pathstate->limit = limitCount;
+    pathstate->offset = limitOffset;
+    final_path = create_foreign_upper_path(root,
+                                        input_rel,
+                                        root->upper_targets[UPPERREL_FINAL],
+                                        limitCount,
+                                        planstate->startupCost,
+                                        limitCount * planstate->width,
+                                        NULL, /* pathkeys will be applied in the input_rel */
+                                        NULL, /* no extra plan */
+#if PG_VERSION_NUM >= 170000
+                                        NULL, /* no fdw_restrictinfo list */
+#endif
+                                        (void*)pathstate);
+    /* and add it to the final_rel */
+    add_path(final_rel, (Path *) final_path);
 }
 
 /*
@@ -458,7 +619,21 @@ multicornGetForeignPlan(PlannerInfo *root,
 				&planstate->qual_list);
 		}
 	}
-	planstate->pathkeys = (List *) best_path->fdw_private;
+
+    if (best_path->fdw_private)
+    {
+        MulticornPathState *pathstate = (MulticornPathState *) best_path->fdw_private;
+        planstate->pathkeys = pathstate->pathkeys;
+        planstate->limit = pathstate->limit;
+        planstate->offset = pathstate->offset;
+    }
+    else
+    {
+        planstate->pathkeys = NIL;
+        planstate->limit = -1;
+        planstate->offset = -1;
+    }
+
 	return make_foreignscan(tlist,
 							scan_clauses,
 							scan_relid,
@@ -1162,12 +1337,18 @@ serializePlanState(MulticornPlanState * state)
 	List	   *result = NULL;
 
 	result = lappend(result, makeConst(INT4OID,
-						  -1, InvalidOid, 4, Int32GetDatum(state->numattrs), false, true));
+					-1, InvalidOid, 4, Int32GetDatum(state->numattrs), false, true));
 	result = lappend(result, makeConst(INT4OID,
 					-1, InvalidOid, 4, Int32GetDatum(state->foreigntableid), false, true));
 	result = lappend(result, state->target_list);
 
 	result = lappend(result, serializeDeparsedSortGroup(state->pathkeys));
+
+    result = lappend(result, makeConst(INT4OID,
+                    -1, InvalidOid, 4, Int32GetDatum(state->limit), false, true));
+
+    result = lappend(result, makeConst(INT4OID,
+                    -1, InvalidOid, 4, Int32GetDatum(state->offset), false, true));
 
 	return result;
 }
@@ -1195,5 +1376,7 @@ initializeExecState(void *internalstate)
 	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
 	execstate->values = palloc(attnum * sizeof(Datum));
 	execstate->nulls = palloc(attnum * sizeof(bool));
+    execstate->limit = DatumGetInt32(((Const*)list_nth(values,4))->constvalue);
+    execstate->offset = DatumGetInt32(((Const*)list_nth(values,5))->constvalue);
 	return execstate;
 }

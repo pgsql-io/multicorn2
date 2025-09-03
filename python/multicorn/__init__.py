@@ -212,6 +212,21 @@ class ForeignDataWrapper(object):
         """
         return []
 
+    def can_limit(self, limit, offset):
+        """
+        Method called from the planner to ask the FDW whether it supports LIMIT pushdown.
+        This method is only called if the rest of the query can be pushed down including the sort and quals. For example,
+        if the query has a GROUP BY clause, this method will not be called.
+
+        Args:
+            limit (int or None): The limit to apply to the query.
+            offset (int or None): The offset to apply to the query.
+
+        Return:
+            True if the FDW can support both LIMIT and OFFSET pushdown, Falseotherwise.
+        """
+        return False
+    
     def get_path_keys(self):
         u"""
         Method called from the planner to add additional Path to the planner.
@@ -269,7 +284,7 @@ class ForeignDataWrapper(object):
         """
         return []
 
-    def explain(self, quals, columns, sortkeys=None, verbose=False):
+    def explain(self, quals, columns, sortkeys=None, verbose=False, limit=None, offset=None):
         """Hook called on explain.
 
         The arguments are the same as the :meth:`execute`, with the addition of
@@ -280,7 +295,7 @@ class ForeignDataWrapper(object):
         """
         return []
 
-    def execute(self, quals, columns, sortkeys=None):
+    def execute(self, quals, columns, sortkeys=None, limit=None, offset=None):
         """Execute a query in the foreign data wrapper.
 
         This method is called at the first iteration.
@@ -313,6 +328,8 @@ class ForeignDataWrapper(object):
                 should be in the sequence.
             sortkeys (list): A list of :class:`SortKey`
                 that the FDW said it can enforce.
+            limit (int): The limit to apply to the query.
+            offset (int): The offset to apply to the query.
 
         Returns:
             An iterable of python objects which can be converted back to PostgreSQL.
