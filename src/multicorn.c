@@ -573,6 +573,9 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
                                         input_rel,
                                         root->upper_targets[UPPERREL_FINAL],
                                         limitCount,
+#if PG_VERSION_NUM >= 180000 // # of disabled_nodes added in PG 18
+			                            0,
+#endif
                                         planstate->startupCost,
                                         limitCount * planstate->width,
                                         NULL, /* pathkeys will be applied in the input_rel */
