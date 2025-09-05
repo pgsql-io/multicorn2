@@ -93,6 +93,9 @@ typedef struct MulticornPlanState
     int offset;
     int limit;
 
+    /* Used for tracking the input_rel for upper plans*/
+    RelOptInfo *input_rel;
+
 }	MulticornPlanState;
 
 typedef struct MulticornExecState

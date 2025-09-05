@@ -125,6 +125,10 @@ static void multicorn_xact_callback(XactEvent event, void *arg);
 void	   *serializePlanState(MulticornPlanState * planstate);
 MulticornExecState *initializeExecState(void *internal_plan_state);
 
+static void add_foreign_ordered_paths(PlannerInfo *root,
+                                    RelOptInfo *input_rel,
+                                    RelOptInfo *final_rel,
+                                    FinalPathExtraData *extra);
 static void add_foreign_final_paths(PlannerInfo *root,
                                     RelOptInfo *input_rel,
                                     RelOptInfo *final_rel,
@@ -454,14 +458,80 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
                                           RelOptInfo *output_rel, 
                                           void *extra)
 {
+    // elog(WARNING, "Got input_rel private: %p", input_rel->fdw_private);
+    // elog(WARNING, "Got output_rel private: %p", output_rel->fdw_private);
+
+    // If the input_rel has no private, then pushdown wasn't supported for the previous stage
+    // Which means we can't pushdown anything for the the current stage (as least this is true for limit/offset)
+    if (!input_rel->fdw_private)
+        return;
+
+    // elog(WARNING, "Got stage: %d", stage);
     switch (stage)
 	{
+        case UPPERREL_ORDERED:
+            add_foreign_ordered_paths(root, input_rel, output_rel, (FinalPathExtraData *)extra);
+            break;
 		case UPPERREL_FINAL:
             add_foreign_final_paths(root, input_rel, output_rel, (FinalPathExtraData *)extra);
 			break;
 		default:
 			break;
 	}
+}
+
+/*
+ * add_foreign_ordered_paths
+ *		Add foreign paths for performing the sort processing remotely.
+ *
+ * Given input_rel contains the source-data Paths.  The paths are added to the
+ * given final_rel.
+ *
+ * Note: Since sorts are already taken care of in the base rel, we only check for pushdown here.
+ */
+ static void
+ add_foreign_ordered_paths(PlannerInfo *root, RelOptInfo *input_rel,
+                         RelOptInfo *final_rel,
+                         FinalPathExtraData *extra)
+ {
+    List *applied_pathkeys = NIL;
+    ListCell *lc;
+    MulticornPlanState *planstate = input_rel->fdw_private;
+    ForeignPath *cheapest_path = (ForeignPath *)input_rel->cheapest_total_path;
+    if ( planstate )
+    {
+        if (cheapest_path && IsA(cheapest_path, ForeignPath))
+        {
+            MulticornPathState *pathstate = (MulticornPathState *)cheapest_path->fdw_private;
+            if ( pathstate )
+            {
+                planstate->pathkeys = pathstate->pathkeys;
+            }
+        }
+
+        /* Extract the pathkeys from the input_rel */
+        foreach(lc, input_rel->pathlist)
+        {
+            Path *path = (Path *) lfirst(lc);
+            if (IsA(path, ForeignPath))
+            {
+                ForeignPath *fpath = (ForeignPath *) path;
+                if (fpath->path.pathkeys != NIL)
+                {
+                    applied_pathkeys = fpath->path.pathkeys;
+                    break;
+                }
+            }
+        }
+
+        /* We only support limit/offset if the sort is completely pushed down */
+        /* By bailing here, input_rel for the next state will not have planstate, which will cause no more pushdowns */
+        if (!pathkeys_contained_in(root->sort_pathkeys, applied_pathkeys))
+            return;
+
+        planstate->input_rel = input_rel;
+        final_rel->fdw_private = planstate;
+    }
 }
 
 /*
@@ -482,10 +552,6 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
     ForeignPath *final_path;
     int limitCount = -1;
     int limitOffset = -1;
-    Path *cheapest_path;
-    List *deparsed_pathkeys = NIL;
-    List *applied_pathkeys = NIL;
-    ListCell *lc;
 
     /* No work if there is no need to add a LIMIT node */
     if (!extra->limit_needed)
@@ -497,6 +563,10 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
 
     /* We do not support pushing down FETCH FIRST .. WITH TIES */
     if (parse->limitOption == LIMIT_OPTION_WITH_TIES)
+        return;
+
+    /* We don't currently support pushing down limits with quals */
+    if (parse->jointree->quals)
         return;
 
     /* only push down constant LIMITs... */
@@ -516,49 +586,8 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
 
     /* Get the current input_rel and it's planstate */
     planstate = input_rel->fdw_private;
-    // TODO: Maybe this isn't needed if we handle the previous stages correctly?
-    if (!planstate)
-    {
-        for (int i = 1; i < root->simple_rel_array_size; i++)
-        {
-            RelOptInfo *rel = root->simple_rel_array[i];
-            if (rel && rel->reloptkind == RELOPT_BASEREL)
-            {
-                planstate = rel->fdw_private;
-                input_rel->fdw_private = planstate;
-                input_rel = rel;
-                break;
-            }
-        }
-    }
-    
-    /* Extract pathkeys from the cheapest path's fdw_private if it exists */
-    cheapest_path = input_rel->cheapest_total_path;
-    if (cheapest_path && IsA(cheapest_path, ForeignPath))
-    {
-        ForeignPath *foreign_path = (ForeignPath *)cheapest_path;
-        if (foreign_path->fdw_private)
-        {
-            MulticornPathState *input_pathstate = (MulticornPathState *)foreign_path->fdw_private;
-            deparsed_pathkeys = input_pathstate->pathkeys;
-        }
-    }
-    
-    /* Extract the pathkeys from the input_rel */
-    foreach(lc, input_rel->pathlist)
-    {
-        Path *path = (Path *) lfirst(lc);
-        if (IsA(path, ForeignPath))
-        {
-            ForeignPath *fpath = (ForeignPath *) path;
-            if (fpath->path.pathkeys != NIL)
-                applied_pathkeys = fpath->path.pathkeys;
-        }
-    }
- 
-    /* We only support limit/offset if the sort is completely pushed down */
-    if (!pathkeys_contained_in(root->sort_pathkeys, applied_pathkeys))
-        return;
+    if ( planstate->input_rel )
+        input_rel = planstate->input_rel;
    
     /* Check if Python FWD can push down the LIMIT/OFFSET */
     if (!canLimit(planstate, limitCount, limitOffset))
@@ -566,7 +595,7 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
 
     /* Create foreign final path with the correct number of rows, and include state for limit/offset pushdown */
     pathstate = (MulticornPathState *)calloc(1, sizeof(MulticornPathState));
-    pathstate->pathkeys = deparsed_pathkeys;
+    pathstate->pathkeys = planstate->pathkeys;
     pathstate->limit = limitCount;
     pathstate->offset = limitOffset;
     final_path = create_foreign_upper_path(root,

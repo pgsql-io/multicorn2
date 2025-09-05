@@ -55,5 +55,22 @@ SELECT * FROM testmulticorn ORDER BY test1 LIMIT 1 OFFSET 1;
 EXPLAIN SELECT * FROM testmulticorn_nosort ORDER BY test1 LIMIT 1 OFFSET 1;
 SELECT * FROM testmulticorn_nosort ORDER BY test1 LIMIT 1 OFFSET 1;
 
+-- Verify limit and offset are not pushed down with where (which we may eventually support in the future)
+EXPLAIN SELECT * FROM testmulticorn WHERE test1 = '02-03-2011' LIMIT 1 OFFSET 1;
+SELECT * FROM testmulticorn WHERE test1 = '02-03-2011' LIMIT 1 OFFSET 1;
+
+-- Verify limit and offset are not pushed down with group by
+EXPLAIN SELECT max(test1) FROM testmulticorn GROUP BY test1 LIMIT 1 OFFSET 1;
+SELECT max(test1) FROM testmulticorn GROUP BY test1 LIMIT 1 OFFSET 1;
+
+-- Verify limit and offset are not pushed down with window functions
+EXPLAIN SELECT max(test1) OVER (ORDER BY test1) FROM testmulticorn LIMIT 1 OFFSET 1;
+SELECT max(test1) OVER (ORDER BY test1) FROM testmulticorn LIMIT 1 OFFSET 1;
+
+-- Verify limit and offset are not pushed down with joins 
+-- TODO: optimize by pushing down limit/offset on one side of the join
+EXPLAIN SELECT * FROM testmulticorn m1 JOIN testmulticorn m2 ON m1.test1 = m2.test1 LIMIT 1 OFFSET 1;
+SELECT * FROM testmulticorn m1 JOIN testmulticorn m2 ON m1.test1 = m2.test1 LIMIT 1 OFFSET 1;
+
 DROP USER MAPPING FOR current_user SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
