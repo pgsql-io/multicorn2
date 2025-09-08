@@ -55,6 +55,10 @@ SELECT * FROM testmulticorn ORDER BY test1 LIMIT 1 OFFSET 1;
 EXPLAIN SELECT * FROM testmulticorn_nosort ORDER BY test1 LIMIT 1 OFFSET 1;
 SELECT * FROM testmulticorn_nosort ORDER BY test1 LIMIT 1 OFFSET 1;
 
+-- Verify limit and offset are not pushed when sort is partially pushed down
+EXPLAIN SELECT * FROM testmulticorn ORDER BY test1, test2 LIMIT 1 OFFSET 1;
+SELECT * FROM testmulticorn ORDER BY test1, test2 LIMIT 1 OFFSET 1;
+
 -- Verify limit and offset are not pushed down with where (which we may eventually support in the future)
 EXPLAIN SELECT * FROM testmulticorn WHERE test1 = '02-03-2011' LIMIT 1 OFFSET 1;
 SELECT * FROM testmulticorn WHERE test1 = '02-03-2011' LIMIT 1 OFFSET 1;

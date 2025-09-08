@@ -214,16 +214,20 @@ class ForeignDataWrapper(object):
 
     def can_limit(self, limit, offset):
         """
-        Method called from the planner to ask the FDW whether it supports LIMIT pushdown.
-        This method is only called if the rest of the query can be pushed down including the sort and quals. For example,
-        if the query has a GROUP BY clause, this method will not be called.
+        Method called from the planner to ask the FDW whether it supports LIMIT and OFFSET pushdown.
+
+        This method is only called if the entire query can be pushed down. For example, if the query has
+        a GROUP BY clause, this method will not be called. Or, if only part of the sort is pushed down,
+        this method will not be called and limit/offset will not be pushed down.
+        
+        Currently, we do not support pushing down limit/offset if the query includes a WHERE clause (quals).
 
         Args:
-            limit (int or None): The limit to apply to the query.
-            offset (int or None): The offset to apply to the query.
+            limit (int or None): The limit to apply to the query, if any.
+            offset (int or None): The offset to apply to the query, if any.
 
         Return:
-            True if the FDW can support both LIMIT and OFFSET pushdown, Falseotherwise.
+            True if the FDW can support both LIMIT and OFFSET pushdown, False otherwise.
         """
         return False
     
@@ -328,8 +332,8 @@ class ForeignDataWrapper(object):
                 should be in the sequence.
             sortkeys (list): A list of :class:`SortKey`
                 that the FDW said it can enforce.
-            limit (int): The limit to apply to the query.
-            offset (int): The offset to apply to the query.
+            limit (int or None): The limit to apply to the query, if any.
+            offset (int or None): The offset to apply to the query, if any.
 
         Returns:
             An iterable of python objects which can be converted back to PostgreSQL.

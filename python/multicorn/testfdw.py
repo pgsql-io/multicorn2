@@ -133,10 +133,10 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         return []
 
     def can_sort(self, sortkeys):
-        # assume sort pushdown ok for all cols, in any order, any collation
+        # assume sort pushdown ok only for first sort key
         if not self.cansort:
             return []
-        return sortkeys
+        return sortkeys[:1]
 
     def can_limit(self, limit, offset):
         return self.canlimit

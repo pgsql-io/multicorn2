@@ -93,6 +93,9 @@ typedef struct MulticornPlanState
     int offset;
     int limit;
 
+    /* For tracking if the sort is completely pushed down */
+    bool sort_pushed_down;
+    
     /* Used for tracking the input_rel for upper plans*/
     RelOptInfo *input_rel;
 

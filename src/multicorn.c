@@ -375,7 +375,7 @@ multicornGetForeignPaths(PlannerInfo *root,
 	/* Try to find parameterized paths */
 	pathes = findPaths(root, baserel, possiblePaths, planstate->startupCost,
 			planstate, apply_pathkeys, deparsed_pathkeys);
-    
+
 	/* Add a simple default path */
 	pathes = lappend(pathes, create_foreignscan_path(root, baserel,
 		 	NULL,  /* default pathtarget */
@@ -406,6 +406,10 @@ multicornGetForeignPaths(PlannerInfo *root,
 		}
 	}
 
+    /* Determine if the sort is completely pushed down and store the results to be used in the upper paths */
+    /* Regardless, store the deparsed pathkeys to be used in the upper paths */
+    planstate->sort_pushed_down = pathkeys_contained_in(root->sort_pathkeys, apply_pathkeys);
+    
 	/* Add each ForeignPath previously found */
 	foreach(lc, pathes)
 	{
@@ -419,11 +423,13 @@ multicornGetForeignPaths(PlannerInfo *root,
 		{
 			ForeignPath *newpath;
 
-            MulticornPathState *pathstate = (MulticornPathState *)calloc(1, sizeof(MulticornPathState));
+            MulticornPathState *pathstate = (MulticornPathState *)palloc0(sizeof(MulticornPathState));
             pathstate->pathkeys = deparsed_pathkeys;
             pathstate->limit = -1;
             pathstate->offset = -1;
         
+            planstate->pathkeys = deparsed_pathkeys;
+
 			newpath = create_foreignscan_path(root, baserel,
 					NULL,  /* default pathtarget */
 					path->path.rows,
@@ -458,23 +464,21 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
                                           RelOptInfo *output_rel, 
                                           void *extra)
 {
-    // elog(WARNING, "Got input_rel private: %p", input_rel->fdw_private);
-    // elog(WARNING, "Got output_rel private: %p", output_rel->fdw_private);
-
-    // If the input_rel has no private, then pushdown wasn't supported for the previous stage
-    // Which means we can't pushdown anything for the the current stage (as least this is true for limit/offset)
+    // If the input_rel has no private, then pushdown wasn't supported for the previous stage. 
+    // Therefore we can't pushdown anything for the the current stage (as least this is true for limit/offset)
     if (!input_rel->fdw_private)
         return;
 
-    // elog(WARNING, "Got stage: %d", stage);
     switch (stage)
 	{
         case UPPERREL_ORDERED:
             add_foreign_ordered_paths(root, input_rel, output_rel, (FinalPathExtraData *)extra);
             break;
+
 		case UPPERREL_FINAL:
             add_foreign_final_paths(root, input_rel, output_rel, (FinalPathExtraData *)extra);
 			break;
+            
 		default:
 			break;
 	}
@@ -484,9 +488,6 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
  * add_foreign_ordered_paths
  *		Add foreign paths for performing the sort processing remotely.
  *
- * Given input_rel contains the source-data Paths.  The paths are added to the
- * given final_rel.
- *
  * Note: Since sorts are already taken care of in the base rel, we only check for pushdown here.
  */
  static void
@@ -494,41 +495,10 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
                          RelOptInfo *final_rel,
                          FinalPathExtraData *extra)
  {
-    List *applied_pathkeys = NIL;
-    ListCell *lc;
     MulticornPlanState *planstate = input_rel->fdw_private;
-    ForeignPath *cheapest_path = (ForeignPath *)input_rel->cheapest_total_path;
-    if ( planstate )
+
+    if ( planstate && planstate->sort_pushed_down )
     {
-        if (cheapest_path && IsA(cheapest_path, ForeignPath))
-        {
-            MulticornPathState *pathstate = (MulticornPathState *)cheapest_path->fdw_private;
-            if ( pathstate )
-            {
-                planstate->pathkeys = pathstate->pathkeys;
-            }
-        }
-
-        /* Extract the pathkeys from the input_rel */
-        foreach(lc, input_rel->pathlist)
-        {
-            Path *path = (Path *) lfirst(lc);
-            if (IsA(path, ForeignPath))
-            {
-                ForeignPath *fpath = (ForeignPath *) path;
-                if (fpath->path.pathkeys != NIL)
-                {
-                    applied_pathkeys = fpath->path.pathkeys;
-                    break;
-                }
-            }
-        }
-
-        /* We only support limit/offset if the sort is completely pushed down */
-        /* By bailing here, input_rel for the next state will not have planstate, which will cause no more pushdowns */
-        if (!pathkeys_contained_in(root->sort_pathkeys, applied_pathkeys))
-            return;
-
         planstate->input_rel = input_rel;
         final_rel->fdw_private = planstate;
     }
@@ -584,7 +554,7 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
     if (parse->limitOffset)
         limitOffset = DatumGetInt32(((Const *)parse->limitOffset)->constvalue);
 
-    /* Get the current input_rel and it's planstate */
+    /* Get the current planstate and its input_rel */
     planstate = input_rel->fdw_private;
     if ( planstate->input_rel )
         input_rel = planstate->input_rel;
@@ -593,11 +563,13 @@ static void multicornGetForeignUpperPaths(PlannerInfo *root,
     if (!canLimit(planstate, limitCount, limitOffset))
         return;
 
-    /* Create foreign final path with the correct number of rows, and include state for limit/offset pushdown */
-    pathstate = (MulticornPathState *)calloc(1, sizeof(MulticornPathState));
+    /* Include pathkeys and limit/offset in pathstate */
+    pathstate = (MulticornPathState *)palloc(sizeof(MulticornPathState));
     pathstate->pathkeys = planstate->pathkeys;
     pathstate->limit = limitCount;
     pathstate->offset = limitOffset;
+
+    /* Create foreign final path with the correct number of rows and cost. */
     final_path = create_foreign_upper_path(root,
                                         input_rel,
                                         root->upper_targets[UPPERREL_FINAL],
@@ -1369,7 +1341,7 @@ serializePlanState(MulticornPlanState * state)
 	List	   *result = NULL;
 
 	result = lappend(result, makeConst(INT4OID,
-					-1, InvalidOid, 4, Int32GetDatum(state->numattrs), false, true));
+					    -1, InvalidOid, 4, Int32GetDatum(state->numattrs), false, true));
 	result = lappend(result, makeConst(INT4OID,
 					-1, InvalidOid, 4, Int32GetDatum(state->foreigntableid), false, true));
 	result = lappend(result, state->target_list);
