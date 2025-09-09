@@ -123,6 +123,7 @@ TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql 
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_sequence_test.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_date.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_dict.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_limit.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_list.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_sort.sql \
   test-$(PYTHON_TEST_VERSION)/sql/write_savepoints.sql \

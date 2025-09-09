@@ -62,6 +62,12 @@ typedef struct ConversionInfo
 	bool		need_quote;
 }	ConversionInfo;
 
+typedef struct MulticornPathState
+{
+    int offset;
+    int limit;
+    List *pathkeys; /* list of MulticornDeparsedSortGroup */
+}   MulticornPathState;
 
 typedef struct MulticornPlanState
 {
@@ -82,6 +88,17 @@ typedef struct MulticornPlanState
 	 * getRelSize to GetForeignPlan.
 	 */
 	int width;
+
+    /* For limit/offset pushdown */
+    int offset;
+    int limit;
+
+    /* For tracking if the sort is completely pushed down */
+    bool sort_pushed_down;
+    
+    /* Used for tracking the input_rel for upper plans*/
+    RelOptInfo *input_rel;
+
 }	MulticornPlanState;
 
 typedef struct MulticornExecState
@@ -100,6 +117,8 @@ typedef struct MulticornExecState
 	AttrNumber	rowidAttno;
 	char	   *rowidAttrName;
 	List	   *pathkeys; /* list of MulticornDeparsedSortGroup) */
+    int       limit;
+    int       offset;
 }	MulticornExecState;
 
 typedef struct MulticornModifyState
@@ -182,6 +201,7 @@ void getRelSize(MulticornPlanState * state,
 List	   *pathKeys(MulticornPlanState * state);
 
 List	   *canSort(MulticornPlanState * state, List *deparsed);
+bool        canLimit(MulticornPlanState * state, int limit, int offset);
 
 CacheEntry *getCacheEntry(Oid foreigntableid);
 UserMapping *multicorn_GetUserMapping(Oid userid, Oid serverid);

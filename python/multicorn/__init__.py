@@ -212,6 +212,25 @@ class ForeignDataWrapper(object):
         """
         return []
 
+    def can_limit(self, limit, offset):
+        """
+        Method called from the planner to ask the FDW whether it supports LIMIT and OFFSET pushdown.
+
+        This method is only called if the entire query can be pushed down. For example, if the query has
+        a GROUP BY clause, this method will not be called. Or, if only part of the sort is pushed down,
+        this method will not be called and limit/offset will not be pushed down.
+        
+        Currently, we do not support pushing down limit/offset if the query includes a WHERE clause (quals).
+
+        Args:
+            limit (int or None): The limit to apply to the query, if any.
+            offset (int or None): The offset to apply to the query, if any.
+
+        Return:
+            True if the FDW can support both LIMIT and OFFSET pushdown, False otherwise.
+        """
+        return False
+    
     def get_path_keys(self):
         u"""
         Method called from the planner to add additional Path to the planner.
@@ -269,7 +288,7 @@ class ForeignDataWrapper(object):
         """
         return []
 
-    def explain(self, quals, columns, sortkeys=None, verbose=False):
+    def explain(self, quals, columns, sortkeys=None, verbose=False, limit=None, offset=None):
         """Hook called on explain.
 
         The arguments are the same as the :meth:`execute`, with the addition of
@@ -280,7 +299,7 @@ class ForeignDataWrapper(object):
         """
         return []
 
-    def execute(self, quals, columns, sortkeys=None):
+    def execute(self, quals, columns, sortkeys=None, limit=None, offset=None):
         """Execute a query in the foreign data wrapper.
 
         This method is called at the first iteration.
@@ -313,6 +332,8 @@ class ForeignDataWrapper(object):
                 should be in the sequence.
             sortkeys (list): A list of :class:`SortKey`
                 that the FDW said it can enforce.
+            limit (int or None): The limit to apply to the query, if any.
+            offset (int or None): The offset to apply to the query, if any.
 
         Returns:
             An iterable of python objects which can be converted back to PostgreSQL.

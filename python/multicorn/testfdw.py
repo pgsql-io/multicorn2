@@ -5,7 +5,7 @@ from .utils import log_to_postgres, WARNING, ERROR
 from itertools import cycle
 from datetime import datetime
 from operator import itemgetter
-
+from itertools import islice
 
 class TestForeignDataWrapper(ForeignDataWrapper):
 
@@ -15,6 +15,12 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         super(TestForeignDataWrapper, self).__init__(options, columns)
         self.columns = columns
         self.test_type = options.get('test_type', None)
+        self.canlimit = options.get('canlimit', False)
+        if isinstance(self.canlimit, str):
+            self.canlimit = self.canlimit.lower() == 'true'
+        self.cansort = options.get('cansort', True)
+        if isinstance(self.cansort, str):
+            self.cansort = self.cansort.lower() == 'true'
         self.test_subtype = options.get('test_subtype', None)
         self.tx_hook = options.get('tx_hook', False)
         self._modify_batch_size = int(options.get('modify_batch_size', 1))
@@ -79,7 +85,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                                                           index)
             yield line
 
-    def execute(self, quals, columns, sortkeys=None):
+    def execute(self, quals, columns, sortkeys=None, limit=None, offset=None):
         sortkeys = sortkeys or []
         log_to_postgres(str(sorted(quals)))
         log_to_postgres(str(sorted(columns)))
@@ -99,14 +105,15 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                 k = sortkeys[0];
                 res = self._as_generator(quals, columns)
                 if (self.test_type == 'sequence'):
-                    return sorted(res, key=itemgetter(k.attnum - 1),
+                    res = sorted(res, key=itemgetter(k.attnum - 1),
                                   reverse=k.is_reversed)
                 else:
-                    return sorted(res, key=itemgetter(k.attname),
+                    res = sorted(res, key=itemgetter(k.attname),
                                   reverse=k.is_reversed)
-            return self._as_generator(quals, columns)
+                return res[offset:offset + limit] if offset else res[:limit]
+            return islice(self._as_generator(quals, columns), offset, (offset or 0) + limit if limit else None)
 
-    def explain(self, quals, columns, sortkeys=None, verbose=False):
+    def explain(self, quals, columns, sortkeys=None, verbose=False, limit=None, offset=None):
         if self.noisy_explain:
             log_to_postgres("EXPLAIN quals=%r" % (sorted(quals),))
             log_to_postgres("EXPLAIN columns=%r" % (sorted(columns),))
@@ -126,8 +133,13 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         return []
 
     def can_sort(self, sortkeys):
-        # assume sort pushdown ok for all cols, in any order, any collation
-        return sortkeys
+        # assume sort pushdown ok only for first sort key
+        if not self.cansort:
+            return []
+        return sortkeys[:1]
+
+    def can_limit(self, limit, offset):
+        return self.canlimit
 
     def update(self, rowid, newvalues):
         if self.test_type == 'nowrite':
