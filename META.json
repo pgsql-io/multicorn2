@@ -37,7 +37,7 @@
     "release_status": "stable",
     "generated_by": "Lussier",
     "meta-spec": {
-        "version": "3.1",
+        "version": "3.2",
         "url": "http://pgxn.org/meta/spec.txt"
     },
     "tags": [
