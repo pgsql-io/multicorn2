@@ -9,7 +9,7 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system: let
       debugBuild = false;
-      multicornVersion = "3.1";
+      multicornVersion = "3.2";
 
       pkgs = nixpkgs.legacyPackages.${system};
 
