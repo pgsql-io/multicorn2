@@ -91,7 +91,7 @@ from multicorn.compat import unicode_
 SPECIAL_CHARS = {
     ord('*'): '\\2a',
     ord('('): '\\28',
-    ord(')'): '\29',
+    ord(')'): '\\29',
     ord('\\'): '\\5c',
     ord('\x00'): '\\00',
     ord('/'): '\\2f'
