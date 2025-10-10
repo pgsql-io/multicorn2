@@ -1,13 +1,15 @@
-3.2:
+3.2: (2025-10-10)
    - add support for OFFSET/LIMIT (pull 82)
+   - add paging support for ldap (pull 89)
+   - fix ldap right parens escaping (pull 89)
 
-3.1:
+3.1: (2025-09)
    - add support for Python 3.13
    - add support for pg18
    - drop support for Postgres versions prior to 14
    - rework usage Doc from Sphinx into simple Markdown
 
-3.0:
+3.0: (2024-09)
    - drop support for Python 3 versions prior to 3.9
    - drop support for Postgres versions prior to 12
    - PG14: fix DELETE to not passing rowid_column to the FDW (https://github.com/pgsql-io/multicorn2/pull/41)

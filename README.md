@@ -4,7 +4,8 @@ Multicorn2
 
 Multicorn Python3 Foreign Data Wrapper (FDW) for Postgresql.  Tested on Linux w/ Python 3.9-3.13 & Postgres 14-18.
 
-Our latest prod release, v3.1, supports thru pg18 (and has some testing against Python 3.13).
+Our latest release is v3.2 and it supports basic pushdown for offset/limit.
+Release v3.1 supports thru pg18 (and has some testing against Python 3.13).
 Newest versions of major linux distro's (Ubuntu 24.04 & EL10) ship with Python 3.12 so sticking with using 3.12 (instead of 3.13) is advised in the short run.
 Python 3.9 is already deprecated by the CPython community and will soon be unsupported by this extension; use 3.10 thru 3.12 instead.
 
@@ -69,9 +70,9 @@ sudo make install
 ```bash
 set PATH=/usr/local/pgsql/bin:$PATH
 cd ~/postgresql-18.0/contrib
-wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v3.1.tar.gz
-tar -xvf v3.1.tar.gz
-cd multicorn2-3.1
+wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v3.x.tar.gz
+tar -xvf v3.x.tar.gz
+cd multicorn2-3.x
 make
 sudo make install
 ```
@@ -102,9 +103,9 @@ sudo yum -y install git python3 python3-devel python3-pip
 
 ### Download & Compile Multicorn2
 ```bash
-wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v3.1.tar.gz
-tar -xvf v3.1.tar.gz
-cd multicorn2-3.1
+wget https://github.com/pgsql-io/multicorn2/archive/refs/tags/v3.x.tar.gz
+tar -xvf v3.x.tar.gz
+cd multicorn2-3.x
 make
 sudo make install
 ```
