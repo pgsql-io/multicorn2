@@ -95,14 +95,7 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 			detailstr = PyString_AsString(detail);
 			errdetail("%s", detailstr);
 		}
-		Py_DECREF(args);
-		Py_DECREF(kwargs);
 		errfinish(__FILE__, __LINE__, PG_FUNCNAME_MACRO);
-	}
-	else
-	{
-		Py_DECREF(args);
-		Py_DECREF(kwargs);
 	}
 	Py_INCREF(Py_None);
 	return Py_None;
