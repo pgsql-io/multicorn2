@@ -25,6 +25,18 @@ repository:
   https://github.com/youngwookim/hive-fdw-for-postgresql
 
 
+## trino fdw
+
+Query Trino (Presto) tables from PostgreSQL. Pushes WHERE, ORDER BY and
+LIMIT down to Trino; supports password, JWT, certificate and Kerberos
+authentication with impersonation. Installable from PyPI (``trino_fdw``).
+
+ :read:
+
+repository:
+  https://github.com/JohnEarle/trino_fdw
+
+
 ## docker fdw
 
 
