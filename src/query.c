@@ -10,6 +10,7 @@
 #include "utils/lsyscache.h"
 #include "miscadmin.h"
 #include "parser/parsetree.h"
+#include "nodes/nodeFuncs.h"
 #include "pg_config.h"
 
 #define get_attname(x, y) get_attname(x, y, true)
@@ -639,12 +640,35 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 			qual->right_type = T_Var;
 			((MulticornVarQual *) qual)->rightvarattno = ((Var *) value)->varattno;
 			break;
-		default:
-					elog(DEBUG3, "default");
+		case T_SQLValueFunction:
+					elog(DEBUG3, "T_SQLValueFunction");
+			/*
+			 * CURRENT_DATE/CURRENT_TIMESTAMP/CURRENT_TIME/LOCALTIME(STAMP)/
+			 * USER/etc. Their value depends on the current transaction, so
+			 * they cannot be folded to a Const at plan time and must be
+			 * evaluated at execution time like a Param, but the node is a
+			 * SQLValueFunction, NOT a Param: it must never be cast to
+			 * (Param *). Its result type is readily available on the node
+			 * itself.
+			 */
+			qual = palloc0(sizeof(MulticornParamQual));
+			qual->right_type = T_SQLValueFunction;
+			((MulticornParamQual *) qual)->expr = value;
+			qual->typeoid = ((SQLValueFunction *) value)->type;
+			break;
+		case T_Param:
+					elog(DEBUG3, "T_Param");
 			qual = palloc0(sizeof(MulticornParamQual));
 			qual->right_type = T_Param;
 			((MulticornParamQual *) qual)->expr = value;
-			qual->typeoid = InvalidOid;
+			qual->typeoid = ((Param *) value)->paramtype;
+			break;
+		default:
+					elog(DEBUG3, "default");
+			qual = palloc0(sizeof(MulticornParamQual));
+			qual->right_type = T_Invalid;
+			((MulticornParamQual *) qual)->expr = value;
+			qual->typeoid = exprType((Node *) value);
 			break;
 	}
 	qual->varattno = varattno;

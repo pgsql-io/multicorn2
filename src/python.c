@@ -765,7 +765,7 @@ qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfos)
 	}
 	else
 	{
-		if (typeoid == InvalidOid)
+		if (typeoid == InvalidOid || typeoid == (Oid) -1)
 		{
 			typeoid = cinfo->atttypoid;
 		}
@@ -928,6 +928,8 @@ execute(ForeignScanState *node, ExplainState *es)
 		switch (qual->right_type)
 		{
 			case T_Param:
+			case T_SQLValueFunction:
+			case T_Invalid:
 				expr_state = ExecInitExpr(((MulticornParamQual *) qual)->expr,
 										  (PlanState *) node);
 				newqual = palloc0(sizeof(MulticornConstQual));
@@ -944,7 +946,7 @@ execute(ForeignScanState *node, ExplainState *es)
 											(PlanState *) node);
 					newqual->value = ExecEvalExpr(expr_state, econtext, &isNull);
 				}
-				newqual->base.typeoid = ((Param*) ((MulticornParamQual *) qual)->expr)->paramtype;
+				newqual->base.typeoid = qual->typeoid;
 				newqual->isnull = isNull;
 				break;
 			case T_Const:
